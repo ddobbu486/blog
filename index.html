@@ -381,12 +381,13 @@ function runMain(id) {
   var hasNaver = !!(keys.naverId && keys.naverSecret);
   var ds = hasNaver ? '네이버 데이터랩+AI웹검색' : 'AI웹검색';
 
-  var prompt = '오늘은 ' + dateStr + '입니다. 당신은 네이버 블로그 수익화 전문가입니다.\n\n'
+  // 1차 호출: 제품 추천
+  var prompt1 = '오늘은 ' + dateStr + '입니다. 당신은 네이버 블로그 수익화 전문가입니다.\n\n'
     + '블로그 카테고리: ' + blog.topics + '\n'
     + '수익화: ' + (isCoupang ? '쿠팡 파트너스' : '네이버 쇼핑 커넥터') + '\n'
     + '데이터랩 쇼핑 카테고리: ' + blog.cats + '\n\n'
-    + '웹 검색으로 오늘 트렌드를 파악하고 JSON만 출력하세요:\n'
-    + '{"ds":"' + ds + '","trends":["t1","t2","t3"],'
+    + '웹 검색으로 오늘 트렌드를 파악하고 제품 추천 JSON만 출력하세요:\n'
+    + '{"ds":"' + ds + '","trends":["트렌드1","트렌드2","트렌드3"],'
     + '"products":[{"n":1,"cat":"카테고리","name":"제품명","reason":"추천이유","kws":["k1","k2","k3"]},'
     + '{"n":2,"cat":"카테고리","name":"제품명","reason":"추천이유","kws":["k1","k2","k3"]},'
     + '{"n":3,"cat":"카테고리","name":"제품명","reason":"추천이유","kws":["k1","k2","k3"]},'
@@ -394,18 +395,36 @@ function runMain(id) {
     + '{"n":5,"cat":"카테고리","name":"제품명","reason":"추천이유","kws":["k1","k2","k3"]},'
     + '{"n":6,"cat":"카테고리","name":"제품명","reason":"추천이유","kws":["k1","k2","k3"]},'
     + '{"n":7,"cat":"카테고리","name":"제품명","reason":"추천이유","kws":["k1","k2","k3"]},'
-    + '{"n":8,"cat":"카테고리","name":"제품명","reason":"추천이유","kws":["k1","k2","k3"]}],'
-    + '"blogTopics":[{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
-    + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
-    + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
-    + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
-    + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]}]}';
+    + '{"n":8,"cat":"카테고리","name":"제품명","reason":"추천이유","kws":["k1","k2","k3"]}]}';
 
-  callAPI(prompt, 3000, function(data) {
-    _topics[id] = data.blogTopics || [];
-    renderMain(id, data, isCoupang, dateStr, hasNaver);
+  callAPI(prompt1, 2000, function(data1) {
+    // 1차 결과 먼저 렌더링
+    renderMain(id, data1, isCoupang, dateStr, hasNaver, false);
     btn.disabled = false;
     btn.textContent = '↻ 다시 추천 받기';
+
+    // 2차 호출: 블로그 주제 (별도)
+    var topicEl = document.getElementById('topics-' + id);
+    if (topicEl) topicEl.innerHTML = '<div style="font-size:13px;color:#aaa;padding:12px 0">✍️ 블로그 주제 불러오는 중...</div>';
+
+    var prompt2 = '오늘은 ' + dateStr + '입니다. 당신은 네이버 블로그 수익화 전문가입니다.\n\n'
+      + '블로그 카테고리: ' + blog.topics + '\n'
+      + '수익화: ' + (isCoupang ? '쿠팡 파트너스' : '네이버 쇼핑 커넥터') + '\n\n'
+      + '오늘 트렌드: ' + (data1.trends || []).join(', ') + '\n\n'
+      + '위 트렌드를 반영해서 이 블로그에 맞는 글 주제 5개를 JSON만 출력하세요:\n'
+      + '{"blogTopics":[{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+      + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+      + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+      + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+      + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]}]}';
+
+    callAPI(prompt2, 2000, function(data2) {
+      _topics[id] = data2.blogTopics || [];
+      renderTopics(id, data2.blogTopics || [], isCoupang, dateStr, data1);
+    }, function(err) {
+      if (topicEl) topicEl.innerHTML = '<div class="err">⚠️ 블로그 주제 로딩 실패: ' + err + '</div>';
+    });
+
   }, function(err) {
     resultEl.innerHTML = '<div class="err">⚠️ ' + err + '</div>';
     btn.disabled = false;
@@ -416,15 +435,12 @@ function runMain(id) {
 function renderMain(id, data, isCoupang, dateStr, hasNaver) {
   var el = document.getElementById('result-' + id);
   var html = '';
-
   html += '<div class="ds-bar"><span class="ds-dot ' + (hasNaver ? 'dot-naver' : 'dot-ai') + '"></span><span>분석 기준: ' + (data.ds || 'AI웹검색') + '</span></div>';
-
   if (data.trends && data.trends.length) {
     html += '<div class="trend-bar"><span class="trend-label">🔥 오늘 트렌드</span>';
     data.trends.forEach(function(t) { html += '<span class="trend-kw">' + t + '</span>'; });
     html += '</div>';
   }
-
   html += '<div class="grid">';
   (data.products || []).forEach(function(p) {
     var cUrl = 'https://www.coupang.com/np/search?q=' + encodeURIComponent(p.name);
@@ -437,30 +453,38 @@ function renderMain(id, data, isCoupang, dateStr, hasNaver) {
       + '</div>';
   });
   html += '</div>';
-
-  if (data.blogTopics && data.blogTopics.length) {
-    html += '<div class="section-title">✍️ 오늘 함께 쓰면 좋은 블로그 주제</div>';
-    data.blogTopics.forEach(function(t, i) {
-      var subs = (t.subs||[]).map(function(s,si){ return '<div class="topic-sub"><span class="topic-sub-n">' + (si+1) + '.</span> ' + s + '</div>'; }).join('');
-      html += '<div class="topic-card">'
-        + '<div class="topic-num">' + String(i+1).padStart(2,'0') + '</div>'
-        + '<div class="topic-body">'
-        + '<div class="topic-title">' + t.title + '</div>'
-        + (t.intro ? '<div class="topic-intro">"' + t.intro + '"</div>' : '')
-        + '<div class="topic-subs">' + subs + '</div>'
-        + '<div class="topic-kws">' + (t.kws||[]).map(function(k){ return '<span class="topic-kw">' + k + '</span>'; }).join('') + '</div>'
-        + '<button class="copy-sm" onclick="copyMainTopic(\'' + id + '\',' + i + ',this)">📋 복사</button>'
-        + '</div></div>';
-    });
-  }
-
-  html += '<div class="copy-bar"><button class="copy-btn" onclick="copyAll(\'' + id + '\')">📋 전체 복사</button></div>';
+  html += '<div id="topics-' + id + '"><div style="font-size:13px;color:#aaa;padding:16px 0">✍️ 블로그 주제 불러오는 중...</div></div>';
+  html += '<div class="copy-bar"><button class="copy-btn" onclick="copyAll('' + id + '')">📋 전체 복사</button></div>';
   el.innerHTML = html;
-
   window['_mainData_' + id] = data;
   window['_mainIsCoupang_' + id] = isCoupang;
   window['_mainDate_' + id] = dateStr;
 }
+
+function renderTopics(id, topics) {
+  var topicEl = document.getElementById('topics-' + id);
+  if (!topicEl) return;
+  if (!topics || !topics.length) { topicEl.innerHTML = ''; return; }
+  _topics[id] = topics;
+  var html = '<div class="section-title">✍️ 오늘 함께 쓰면 좋은 블로그 주제</div>';
+  topics.forEach(function(t, i) {
+    var subs = (t.subs||[]).map(function(s,si){ return '<div class="topic-sub"><span class="topic-sub-n">' + (si+1) + '.</span> ' + s + '</div>'; }).join('');
+    html += '<div class="topic-card">'
+      + '<div class="topic-num">' + String(i+1).padStart(2,'0') + '</div>'
+      + '<div class="topic-body">'
+      + '<div class="topic-title">' + t.title + '</div>'
+      + (t.intro ? '<div class="topic-intro">"' + t.intro + '"</div>' : '')
+      + '<div class="topic-subs">' + subs + '</div>'
+      + '<div class="topic-kws">' + (t.kws||[]).map(function(k){ return '<span class="topic-kw">' + k + '</span>'; }).join('') + '</div>'
+      + '<button class="copy-sm" onclick="copyMainTopic('' + id + '',' + i + ',this)">📋 복사</button>'
+      + '</div></div>';
+  });
+  topicEl.innerHTML = html;
+  var d = window['_mainData_' + id] || {};
+  d.blogTopics = topics;
+  window['_mainData_' + id] = d;
+}
+
 
 function copyMainTopic(id, idx, btn) {
   var t = (_topics[id] || [])[idx];
