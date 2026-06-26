@@ -100,6 +100,16 @@ header h1{font-size:16px;font-weight:600}
 .err{color:#c0392b;font-size:13px;padding:10px 14px;background:#fef0ee;border-radius:8px;border:1px solid #f5c6c0;margin-bottom:12px}
 .loading{font-size:13px;color:#aaa;padding:12px 0}
 @media(max-width:600px){.tabs{overflow-x:auto}.grid{grid-template-columns:1fr}}
+.card{position:relative;cursor:pointer;transition:border-color 0.15s,box-shadow 0.15s}
+.card.selected{border-color:#1a1a18;box-shadow:0 0 0 2px #1a1a18}
+.card-check{position:absolute;top:10px;right:10px;width:20px;height:20px;border-radius:50%;border:2px solid #ddd;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:transparent;transition:all 0.15s}
+.card.selected .card-check{background:#1a1a18;border-color:#1a1a18;color:#fff}
+.selbar{display:none;align-items:center;gap:10px;padding:12px 16px;background:#1a1a18;border-radius:10px;margin:14px 0;color:#fff;font-size:13px}
+.selbar.on{display:flex}
+.selbar-txt{flex:1}
+.selbtn{padding:8px 18px;border-radius:8px;border:none;background:#fff;color:#1a1a18;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.selbtn:hover{background:#f0f0f0}
+.clrbtn{padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;font-size:13px;cursor:pointer;font-family:inherit}
 </style>
 </head>
 <body>
@@ -290,11 +300,13 @@ function callApi(prompt,cb,errcb){
   .catch(function(e){errcb(e.message);});
 }
 
-function makeProductHtml(p,isCoupang){
+function makeProductHtml(p,isCoupang,blogId){
   var cu='https://www.coupang.com/np/search?q='+encodeURIComponent(p.name);
   var kws=(p.kws||[]).map(function(k){return '<span class="ckw">'+k+'</span>';}).join('');
   var link=isCoupang?'<div class="clink"><a href="'+cu+'" target="_blank">쿠팡 검색</a></div>':'';
-  return '<div class="card"><div class="cnum">'+String(p.n).padStart(2,'0')+' · '+p.cat+'</div>'
+  return '<div class="card" data-pn="'+p.n+'" data-bid="'+blogId+'" onclick="toggleCard(this)">'
+    +'<div class="card-check">V</div>'
+    +'<div class="cnum">'+String(p.n).padStart(2,'0')+' · '+p.cat+'</div>'
     +'<div class="cname">'+p.name+'</div>'
     +'<div class="creason">'+p.reason+'</div>'
     +'<div class="ckws">'+kws+'</div>'+link+'</div>';
@@ -400,30 +412,7 @@ function runMain(id){
       if(l2)l2.remove();
       renderProducts(id);
 
-      var tarea=document.getElementById('r'+id);
-      tarea.innerHTML+='<div class="loading" id="l3-'+id+'">블로그 주제 불러오는 중...</div>';
-
-      var p3='오늘('+dt+') 네이버 블로그 수익화 전문가로서 답해줘.\n'
-        +'블로그: '+blog.topics+'\n'
-        +'오늘 트렌드: '+(d1.trends||[]).join(', ')+'\n\n'
-        +'이 블로그에 맞는 글 주제 5개를 JSON으로만 출력.\n'
-        +'{"topics":[{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","kws":["k1","k2","k3"]},'
-        +'{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","kws":["k1","k2","k3"]},'
-        +'{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","kws":["k1","k2","k3"]},'
-        +'{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","kws":["k1","k2","k3"]},'
-        +'{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","kws":["k1","k2","k3"]}]}';
-
-      callApi(p3,function(d3){
-        ST['m_'+id].topics=d3.topics||[];
-        var l3=document.getElementById('l3-'+id);
-        if(l3)l3.remove();
-        renderTopics(id);
-        rbtn.disabled=false;rbtn.textContent='다시 추천 받기';
-      },function(err){
-        var l3=document.getElementById('l3-'+id);
-        if(l3)l3.innerHTML='<span class="err">주제 로딩 실패: '+err+'</span>';
-        rbtn.disabled=false;rbtn.textContent='다시 추천 받기';
-      });
+      rbtn.disabled=false;rbtn.textContent='다시 추천 받기';
 
     },function(err){
       var l2=document.getElementById('l2-'+id);
@@ -448,11 +437,85 @@ function renderProducts(id){
     html+='</div>';
   }
   html+='<div class="grid">';
-  (s.products||[]).forEach(function(p){html+=makeProductHtml(p,s.isCoupang);});
+  (s.products||[]).forEach(function(p){html+=makeProductHtml(p,s.isCoupang,id);});
   html+='</div>';
+  html+='<div class="selbar" id="selbar-'+id+'">'
+    +'<div class="selbar-txt" id="selbar-txt-'+id+'"></div>'
+    +'<button class="selbtn" data-sel-topic="'+id+'">선택 제품으로 블로그 주제 추천</button>'
+    +'<button class="clrbtn" data-sel-clear="'+id+'">선택 해제</button>'
+    +'</div>';
   html+='<div id="tarea-'+id+'"></div>';
   html+='<div class="cbar"><button class="cbtn" data-copy-all="'+id+'">전체 복사</button></div>';
   el.innerHTML=html;
+}
+
+function toggleCard(card){
+  card.classList.toggle('selected');
+  var id=card.getAttribute('data-bid');
+  updateSelBar(id);
+}
+
+function updateSelBar(id){
+  var selected=document.querySelectorAll('.card.selected[data-bid="'+id+'"]');
+  var bar=document.getElementById('selbar-'+id);
+  var txt=document.getElementById('selbar-txt-'+id);
+  if(!bar)return;
+  if(selected.length>0){
+    bar.classList.add('on');
+    txt.textContent=selected.length+'개 제품 선택됨';
+  } else {
+    bar.classList.remove('on');
+  }
+}
+
+function runSelectedTopics(id){
+  var k=gk();
+  if(!k.ak){openModal();return;}
+  var selected=document.querySelectorAll('.card.selected[data-bid="'+id+'"]');
+  if(selected.length===0){alert('제품을 먼저 선택해주세요.');return;}
+  var s=ST['m_'+id];
+  var blog=BL[id];
+  var tarea=document.getElementById('tarea-'+id);
+  tarea.innerHTML='<div class="loading">선택한 제품 기반 블로그 주제 불러오는 중...</div>';
+
+  var names=[];
+  selected.forEach(function(card){
+    var n=parseInt(card.getAttribute('data-pn'));
+    var p=(s.products||[]).find(function(p){return p.n===n;});
+    if(p)names.push(p.name);
+  });
+
+  var dt=dtstr();
+  var p='오늘('+dt+') 네이버 블로그 수익화 전문가로서 답해줘.
+'
+    +'블로그 카테고리: '+blog.topics+'
+'
+    +'선택된 제품: '+names.join(', ')+'
+'
+    +'오늘 트렌드: '+((s.trends||[]).join(', '))+'
+
+'
+    +'위 제품들을 활용한 블로그 글 주제 5개를 추천해줘.
+'
+    +'단순 제품 소개 말고 일상글/정보글/건강/이슈/비교 등 다양하게.
+'
+    +'각 주제마다 글 형식(type): 일상, 정보, 리뷰, 비교, 이슈 중 하나.
+
+'
+    +'JSON으로만 출력:
+'
+    +'{"topics":[{"type":"일상","title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+    +'{"type":"정보","title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+    +'{"type":"리뷰","title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+    +'{"type":"비교","title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+    +'{"type":"이슈","title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]}]}';
+
+  callApi(p,function(d){
+    ST['m_'+id].topics=d.topics||[];
+    renderTopics(id);
+  },function(err){
+    tarea.innerHTML='<div class="err">'+err+'</div>';
+  });
 }
 
 function renderTopics(id){
@@ -460,12 +523,40 @@ function renderTopics(id){
   if(!s||!s.topics)return;
   var el=document.getElementById('tarea-'+id);
   if(!el)return;
-  var html='<div class="stitle">오늘 함께 쓰면 좋은 블로그 주제</div>';
-  s.topics.forEach(function(t,i){html+=makeTopicHtml(t,i,'main" data-id="'+id);});
+  var typeColor={'일상':'#d4f0e4','정보':'#d4e8fb','리뷰':'#fce8c4','비교':'#f0e8fb','이슈':'#fde8e8'};
+  var typeText={'일상':'#1a6644','정보':'#1a4f8a','리뷰':'#8a4f1a','비교':'#5a1a8a','이슈':'#8a1a1a'};
+  var html='<div class="stitle">오늘 추천 제품 기반 블로그 주제</div>';
+  s.topics.forEach(function(t,i){
+    var subs=(t.subs||[]).map(function(s,si){
+      return '<div class="tsub"><span class="tsubn">'+(si+1)+'.</span> '+s+'</div>';
+    }).join('');
+    var kws=(t.kws||[]).map(function(k){return '<span class="tkw">'+k+'</span>';}).join('');
+    var tc=typeColor[t.type]||'#f0f0f0';
+    var tt=typeText[t.type]||'#444';
+    var badge=t.type?'<span style="display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:'+tc+';color:'+tt+';margin-bottom:6px">'+t.type+'</span>':'';
+    html+='<div class="tcard"><div class="tnum">'+String(i+1).padStart(2,'0')+'</div>'
+      +'<div class="tbody">'
+      +badge
+      +'<div class="ttitle">'+t.title+'</div>'
+      +(t.intro?'<div class="tintro">"'+t.intro+'"</div>':'')
+      +'<div class="tsubs">'+subs+'</div>'
+      +'<div class="tkws">'+kws+'</div>'
+      +'<button class="csm" data-fn="main" data-id="'+id+'" data-idx="'+i+'">복사</button>'
+      +'</div></div>';
+  });
   el.innerHTML=html;
 }
 
 document.addEventListener('click',function(e){
+  var selBtn=e.target.closest('[data-sel-topic]');
+  if(selBtn){runSelectedTopics(selBtn.getAttribute('data-sel-topic'));return;}
+  var clrBtn=e.target.closest('[data-sel-clear]');
+  if(clrBtn){
+    var bid=clrBtn.getAttribute('data-sel-clear');
+    document.querySelectorAll('.card.selected[data-bid="'+bid+'"]').forEach(function(c){c.classList.remove('selected');});
+    updateSelBar(bid);
+    return;
+  }
   var btn=e.target.closest('[data-copy-all]');
   if(!btn)return;
   var id=btn.getAttribute('data-copy-all');
