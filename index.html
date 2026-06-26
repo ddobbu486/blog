@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>블로그 제품 추천기</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, 'Malgun Gothic', sans-serif; background: #f5f4f0; color: #1a1a18; min-height: 100vh; }
+header { background: #fff; border-bottom: 1px solid #e8e6e0; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+header h1 { font-size: 16px; font-weight: 600; }
+header .sub { font-size: 12px; color: #888; margin-top: 2px; }
+.hbtn { padding: 8px 14px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #555; font-size: 13px; cursor: pointer; font-family: inherit; }
+.hbtn.ok { border-color: #1a8a5a; color: #1a8a5a; }
+.modal-bg { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.45); z-index: 9999; align-items: center; justify-content: center; }
+.modal { background: #fff; border-radius: 14px; padding: 28px; width: 90%; max-width: 500px; }
+.modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.mdesc { font-size: 13px; color: #666; margin-bottom: 18px; line-height: 1.6; }
+.mstat-ok { background: #d4f0e4; color: #1a6644; font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 14px; }
+.mstat-no { background: #fef0ee; color: #c0392b; font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 14px; }
+.msec { margin-bottom: 14px; }
+.msec label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 5px; }
+.msec input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; font-family: inherit; }
+.msec input:focus { outline: none; border-color: #888; }
+.mhint { font-size: 12px; color: #aaa; margin-top: 4px; }
+.mhint a { color: #666; }
+.mdiv { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+.mact { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+.bsave { padding: 10px 22px; border-radius: 8px; border: none; background: #1a1a18; color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.bcancel { padding: 10px 18px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #555; font-size: 14px; cursor: pointer; font-family: inherit; }
+.wrap { max-width: 920px; margin: 0 auto; padding: 24px 16px; }
+.written-box { background: #fff; border-radius: 12px; border: 1px solid #e8e6e0; padding: 20px; margin-bottom: 24px; }
+.written-box h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.written-box p { font-size: 12px; color: #999; margin-bottom: 12px; }
+.written-box textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; font-family: inherit; resize: none; line-height: 1.6; }
+.written-box textarea:focus { outline: none; border-color: #888; }
+.wrhint { font-size: 12px; color: #bbb; margin: 6px 0 12px; }
+.wrrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.wrbtn { padding: 10px 18px; border-radius: 8px; border: none; background: #1a1a18; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.wrbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.wrsel { padding: 9px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; font-family: inherit; background: #fff; cursor: pointer; }
+.wrresult { margin-top: 16px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+.tab { padding: 9px 18px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #666; font-size: 14px; cursor: pointer; font-family: inherit; }
+.tab.on { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+.bdg { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 20px; margin-left: 6px; vertical-align: middle; }
+.ba { background: #d4f0e4; color: #1a6644; }
+.bb { background: #d4e8fb; color: #1a4f8a; }
+.bc { background: #fce8c4; color: #8a4f1a; }
+.tab.on .ba, .tab.on .bb, .tab.on .bc { background: rgba(255,255,255,0.25); color: #fff; }
+.panel { display: none; }
+.panel.on { display: block; }
+.binfo { background: #fff; border-radius: 10px; border: 1px solid #e8e6e0; padding: 14px 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+.bico { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.ica { background: #d4f0e4; }
+.icb { background: #d4e8fb; }
+.icc { background: #fce8c4; }
+.btitle { font-size: 14px; font-weight: 600; }
+.btopics { font-size: 12px; color: #888; margin-top: 2px; }
+.btnrow { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.rbtn { padding: 11px 22px; border-radius: 8px; border: none; background: #1a1a18; color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.rbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ibtn { padding: 11px 22px; border-radius: 8px; border: 1px solid #555; background: #fff; color: #333; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.ibtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.spin { display: inline-block; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.dsbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #fff; border-radius: 8px; border: 1px solid #e8e6e0; margin-bottom: 14px; font-size: 12px; color: #666; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-g { background: #03c75a; }
+.dot-y { background: #f0a500; }
+.trendbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; padding: 10px 14px; background: #fff; border-radius: 8px; border: 1px solid #e8e6e0; }
+.trlabel { font-size: 12px; color: #888; font-weight: 600; }
+.trkw { font-size: 12px; padding: 3px 10px; border-radius: 20px; border: 1px solid #e0ddd6; color: #444; background: #fafaf8; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.card { background: #fff; border: 1px solid #e8e6e0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.cnum { font-size: 11px; font-weight: 600; color: #aaa; }
+.cname { font-size: 14px; font-weight: 600; color: #1a1a18; line-height: 1.4; }
+.creason { font-size: 13px; color: #555; line-height: 1.6; flex: 1; }
+.ckws { display: flex; flex-wrap: wrap; gap: 4px; }
+.ckw { font-size: 11px; color: #666; background: #f5f4f0; border: 1px solid #e0ddd6; border-radius: 4px; padding: 2px 7px; }
+.clink { padding-top: 8px; border-top: 1px solid #f0ede8; }
+.clink a { font-size: 13px; color: #d44b00; text-decoration: none; font-weight: 500; }
+.sectitle { font-size: 13px; font-weight: 600; color: #555; margin: 24px 0 12px; }
+.tcard { background: #fff; border: 1px solid #e8e6e0; border-radius: 10px; padding: 14px 16px; display: flex; gap: 12px; margin-bottom: 8px; }
+.tnum { font-size: 12px; font-weight: 700; color: #bbb; min-width: 20px; padding-top: 1px; }
+.tbody { flex: 1; }
+.ttitle { font-size: 14px; font-weight: 600; color: #1a1a18; margin-bottom: 4px; line-height: 1.4; }
+.tintro { font-size: 13px; color: #888; font-style: italic; margin-bottom: 6px; line-height: 1.5; }
+.tsubs { margin-bottom: 6px; }
+.tsub { font-size: 13px; color: #444; padding: 1px 0; display: flex; gap: 6px; }
+.tsubn { color: #bbb; font-weight: 600; min-width: 14px; }
+.tkws { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.tkw { font-size: 11px; color: #666; background: #f0f7ff; border: 1px solid #d4e8fb; border-radius: 4px; padding: 2px 7px; }
+.ikw { font-size: 11px; color: #8a4f1a; background: #fce8c4; border: 1px solid #f5d4a0; border-radius: 4px; padding: 2px 7px; }
+.ibadge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #fce8c4; color: #8a4f1a; border: 1px solid #f5d4a0; margin-bottom: 6px; }
+.csmbtn { padding: 5px 12px; border-radius: 6px; border: 1px solid #ddd; background: #fff; color: #666; font-size: 12px; cursor: pointer; font-family: inherit; }
+.csmbtn:hover { background: #f5f4f0; }
+.copybar { margin-top: 20px; }
+.copybtn { padding: 9px 16px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #555; font-size: 13px; cursor: pointer; font-family: inherit; }
+.copybtn:hover { background: #f5f4f0; }
+.empty { display: flex; flex-direction: column; align-items: center; padding: 48px 16px; color: #bbb; gap: 10px; text-align: center; }
+.nokey { display: flex; flex-direction: column; align-items: center; padding: 36px 16px; gap: 12px; text-align: center; }
+.nokey p { font-size: 14px; color: #888; }
+.nokey button { padding: 10px 20px; border-radius: 8px; border: none; background: #1a1a18; color: #fff; font-size: 14px; cursor: pointer; font-family: inherit; }
+.err { color: #c0392b; font-size: 13px; padding: 10px 14px; background: #fef0ee; border-radius: 8px; border: 1px solid #f5c6c0; margin-bottom: 12px; }
+.loading { font-size: 13px; color: #aaa; padding: 16px 0; }
+@media (max-width: 600px) { .tabs { overflow-x: auto; } .grid { grid-template-columns: 1fr; } }
+.wbox { background: #f9f8f6; border: 1px solid #e8e6e0; border-radius: 10px; padding: 16px; margin-bottom: 16px; display: none; }
+.wbox.open { display: block; }
+.wbox textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; font-family: inherit; resize: none; line-height: 1.6; margin-bottom: 6px; }
+.wbox textarea:focus { outline: none; border-color: #888; }
+.wbox-hint { font-size: 12px; color: #bbb; margin-bottom: 10px; }
+.wbox-btn { padding: 9px 18px; border-radius: 8px; border: none; background: #1a1a18; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.wbox-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.wresult { margin-top: 14px; }
+.wbtn { padding: 11px 22px; border-radius: 8px; border: 1px solid #888; background: #fff; color: #444; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.wbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>📋 블로그 제품 추천기</h1><div class="sub">AI 웹검색 기반 분석</div></div>
+  <button class="hbtn" id="hbtn" onclick="openModal()">⚙️ API 키 설정</button>
+</header>
+
+<div class="modal-bg" id="mbg" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2>🔑 API 키 설정</h2>
+    <p class="mdesc">입력한 키는 브라우저 로컬에만 저장됩니다.</p>
+    <div id="mstat"></div>
+    <div class="msec">
+      <label>Anthropic API 키 (필수)</label>
+      <input type="password" id="ikey" placeholder="sk-ant-..." autocomplete="off">
+      <div class="mhint">→ <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a></div>
+    </div>
+    <hr class="mdiv">
+    <div class="msec">
+      <label>네이버 데이터랩 Client ID (선택)</label>
+      <input type="text" id="inid" placeholder="Client ID" autocomplete="off">
+      <div class="mhint" style="margin-bottom:10px">→ <a href="https://developers.naver.com/apps/#/register" target="_blank">developers.naver.com</a> · 데이터랩(쇼핑인사이트)</div>
+      <label>네이버 데이터랩 Client Secret (선택)</label>
+      <input type="password" id="insec" placeholder="Client Secret" autocomplete="off">
+    </div>
+    <div class="mact">
+      <button class="bcancel" onclick="closeModal()">취소</button>
+      <button class="bsave" onclick="saveKeys()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  
+
+  <div class="tabs">
+    <button class="tab on" onclick="switchTab('a')">블로그 A <span class="bdg ba">네이버쇼핑</span></button>
+    <button class="tab" onclick="switchTab('b')">블로그 B <span class="bdg bb">네이버쇼핑</span></button>
+    <button class="tab" onclick="switchTab('c')">블로그 C <span class="bdg bc">쿠팡파트너스</span></button>
+  </div>
+
+  <div id="pa" class="panel on">
+    <div class="binfo"><div class="bico ica"></div><div><div class="btitle">블로그 A · 네이버쇼핑 커넥터</div><div class="btopics">생활잡화, 화장품, 미용, 패션, 반려견</div></div></div>
+    <div class="btnrow">
+      <button class="rbtn" id="rba" onclick="runMain('a')">* 오늘 추천 받기</button>
+      <button class="ibtn" id="iba" onclick="runIssue('a')">이슈 주제</button>
+      <button class="wbtn" id="wbtn-a" onclick="toggleWritten('a')">오늘 쓴 글 기반</button>
+    </div>
+    <div class="wbox" id="wbox-a">
+      <textarea id="wtxt-a" rows="3" placeholder="오늘 쓴 글 제목/주제 입력 (쉼표 또는 줄바꿈으로 구분)"></textarea>
+      <div class="wbox-hint">입력 후 버튼 클릭</div>
+      <button class="wbox-btn" id="wrun-a" onclick="runWritten('a')">연관 주제 추천 받기</button>
+    </div>
+    <div id="ra"></div><div id="ia"></div><div id="wa"></div>
+  </div>
+
+  <div id="pb" class="panel">
+    <div class="binfo"><div class="bico icb"></div><div><div class="btitle">블로그 B · 네이버쇼핑 커넥터</div><div class="btopics">생활가전, 주방용품, 육아</div></div></div>
+    <div class="btnrow">
+      <button class="rbtn" id="rbb" onclick="runMain('b')">* 오늘 추천 받기</button>
+      <button class="ibtn" id="ibb" onclick="runIssue('b')">이슈 주제</button>
+      <button class="wbtn" id="wbtn-b" onclick="toggleWritten('b')">오늘 쓴 글 기반</button>
+    </div>
+    <div class="wbox" id="wbox-b">
+      <textarea id="wtxt-b" rows="3" placeholder="오늘 쓴 글 제목/주제 입력 (쉼표 또는 줄바꿈으로 구분)"></textarea>
+      <div class="wbox-hint">입력 후 버튼 클릭</div>
+      <button class="wbox-btn" id="wrun-b" onclick="runWritten('b')">연관 주제 추천 받기</button>
+    </div>
+    <div id="rb"></div><div id="ib"></div><div id="wb"></div>
+  </div>
+
+  <div id="pc" class="panel">
+    <div class="binfo"><div class="bico icc"></div><div><div class="btitle">블로그 C · 쿠팡 파트너스</div><div class="btopics">식품, 건강, 잡화전체</div></div></div>
+    <div class="btnrow">
+      <button class="rbtn" id="rbc" onclick="runMain('c')">* 오늘 추천 받기</button>
+      <button class="ibtn" id="ibc" onclick="runIssue('c')">이슈 주제</button>
+      <button class="wbtn" id="wbtn-c" onclick="toggleWritten('c')">오늘 쓴 글 기반</button>
+    </div>
+    <div class="wbox" id="wbox-c">
+      <textarea id="wtxt-c" rows="3" placeholder="오늘 쓴 글 제목/주제 입력 (쉼표 또는 줄바꿈으로 구분)"></textarea>
+      <div class="wbox-hint">입력 후 버튼 클릭</div>
+      <button class="wbox-btn" id="wrun-c" onclick="runWritten('c')">연관 주제 추천 받기</button>
+    </div>
+    <div id="rc"></div><div id="ic"></div><div id="wc"></div>
+  </div>
+</div>
+
+<script>
+var B = {
+  a: { topics: '생활잡화, 화장품, 미용, 패션, 반려견', type: 'naver', cats: '패션의류, 화장품/미용, 반려동물용품' },
+  b: { topics: '생활가전, 주방용품, 육아', type: 'naver', cats: '생활가전, 주방용품, 출산/육아' },
+  c: { topics: '식품, 건강, 잡화전체', type: 'coupang', cats: '식품, 건강' }
+};
+var store = {};
+
+function gk() {
+  return {
+    ak: localStorage.getItem('_ak') || '',
+    nid: localStorage.getItem('_nid') || '',
+    ns: localStorage.getItem('_ns') || ''
+  };
+}
+
+function openModal() {
+  var k = gk();
+  document.getElementById('ikey').value = k.ak;
+  document.getElementById('inid').value = k.nid;
+  document.getElementById('insec').value = k.ns;
+  var s = document.getElementById('mstat');
+  s.innerHTML = k.ak
+    ? '<div class="mstat-ok">\u2705 Anthropic 키 저장됨' + (k.nid ? ' · 네이버 키도 저장됨' : '') + '</div>'
+    : '<div class="mstat-no">\u26A0\uFE0F API 키가 설정되지 않았습니다</div>';
+  document.getElementById('mbg').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('mbg').style.display = 'none';
+}
+
+function saveKeys() {
+  var ak = document.getElementById('ikey').value.trim();
+  if (!ak) { alert('Anthropic API 키는 필수입니다.'); return; }
+  localStorage.setItem('_ak', ak);
+  var nid = document.getElementById('inid').value.trim();
+  var ns = document.getElementById('insec').value.trim();
+  if (nid) localStorage.setItem('_nid', nid);
+  if (ns) localStorage.setItem('_ns', ns);
+  closeModal();
+  updateHbtn();
+  ['a','b','c'].forEach(showInit);
+}
+
+function updateHbtn() {
+  var btn = document.getElementById('hbtn');
+  var k = gk();
+  btn.className = k.ak ? 'hbtn ok' : 'hbtn';
+  btn.textContent = k.ak ? '\u2705 API 키 설정됨' : ' API 키 설정';
+}
+
+function showInit(id) {
+  var k = gk();
+  var el = document.getElementById('r' + id);
+  if (!k.ak) {
+    el.innerHTML = '<div class="nokey"><div style="font-size:36px">\uD83D\uDD11</div><p>API 키를 먼저 설정해주세요</p><button onclick="openModal()">키 설정하기</button></div>';
+  } else {
+    el.innerHTML = '<div class="empty"><div style="font-size:36px">\uD83D\uDD0D</div><p>버튼을 누르면 오늘 트렌드 기반으로 추천해드립니다</p></div>';
+  }
+}
+
+function switchTab(id) {
+  ['a','b','c'].forEach(function(v,i) {
+    document.querySelectorAll('.tab')[i].classList.toggle('on', v===id);
+    document.getElementById('p'+v).classList.toggle('on', v===id);
+  });
+}
+
+function api(prompt, cb, errcb) {
+  var k = gk();
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': k.ak,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      messages: [{ role: 'user', content: prompt }]
+    })
+  })
+  .then(function(r) {
+    if (r.status === 401) throw new Error('API 키가 올바르지 않습니다');
+    return r.json();
+  })
+  .then(function(d) {
+    var txt = d.content.filter(function(b){ return b.type==='text'; }).map(function(b){ return b.text; }).join('');
+    var s = txt.indexOf('{'), e = txt.lastIndexOf('}');
+    if (s === -1) throw new Error('JSON 파싱 실패');
+    var parsed = JSON.parse(txt.slice(s, e+1));
+    cb(parsed);
+  })
+  .catch(function(e) { errcb(e.message); });
+}
+
+function dtstr() {
+  return new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
+}
+
+function runMain(id) {
+  var k = gk();
+  if (!k.ak) { openModal(); return; }
+  var blog = B[id];
+  var rbtn = document.getElementById('rb'+id);
+  var rel = document.getElementById('r'+id);
+  rbtn.disabled = true;
+  rbtn.textContent = '\u23F3 분석 중...';
+  rel.innerHTML = '';
+
+  var dt = dtstr();
+  var isCoupang = blog.type === 'coupang';
+  var hasNaver = !!(k.nid && k.ns);
+  var ds = hasNaver ? '네이버 데이터랩+AI웹검색' : 'AI웹검색';
+
+  // 1단계: 트렌드 + 제품 4개
+  var p1 = '오늘(' + dt + ') 네이버 블로그 수익화 전문가로서 답해줘.\n'
+    + '블로그: ' + blog.topics + ' / ' + (isCoupang ? '쿠팡파트너스' : '네이버쇼핑커넥터') + '\n\n'
+    + '웹검색으로 오늘 트렌드 파악 후 이 블로그에 맞는 추천 제품 4개를 JSON으로만 출력.\n'
+    + '{"ds":"' + ds + '","trends":["트렌드1","트렌드2","트렌드3"],'
+    + '"products":[{"n":1,"cat":"카테고리","name":"제품명","reason":"이유","kws":["k1","k2"]},'
+    + '{"n":2,"cat":"카테고리","name":"제품명","reason":"이유","kws":["k1","k2"]},'
+    + '{"n":3,"cat":"카테고리","name":"제품명","reason":"이유","kws":["k1","k2"]},'
+    + '{"n":4,"cat":"카테고리","name":"제품명","reason":"이유","kws":["k1","k2"]}]}';
+
+  api(p1, function(d1) {
+    store[id] = { ds: d1.ds, trends: d1.trends, products: d1.products || [], isCoupang: isCoupang, dt: dt, hasNaver: hasNaver };
+
+    // 1단계 결과 먼저 표시
+    renderProducts(id);
+    rel.innerHTML += '<div class="loading" id="load2-'+id+'">\u23F3 추가 제품 불러오는 중...</div>';
+
+    // 2단계: 제품 4개 추가
+    var p2 = '오늘(' + dt + ') 네이버 블로그 수익화 전문가로서 답해줘.\n'
+      + '블로그: ' + blog.topics + ' / ' + (isCoupang ? '쿠팡파트너스' : '네이버쇼핑커넥터') + '\n'
+      + '이미 추천한 제품: ' + (d1.products||[]).map(function(p){ return p.name; }).join(', ') + '\n\n'
+      + '위 제품과 겹치지 않게 추가 제품 4개를 JSON으로만 출력.\n'
+      + '{"products":[{"n":5,"cat":"카테고리","name":"제품명","reason":"이유","kws":["k1","k2"]},'
+      + '{"n":6,"cat":"카테고리","name":"제품명","reason":"이유","kws":["k1","k2"]},'
+      + '{"n":7,"cat":"카테고리","name":"제품명","reason":"이유","kws":["k1","k2"]},'
+      + '{"n":8,"cat":"카테고리","name":"제품명","reason":"이유","kws":["k1","k2"]}]}';
+
+    api(p2, function(d2) {
+      store[id].products = (store[id].products || []).concat(d2.products || []);
+      var l2 = document.getElementById('load2-'+id);
+      if (l2) l2.remove();
+      renderProducts(id);
+
+      // 3단계: 블로그 주제
+      var topDiv = document.getElementById('r'+id);
+      topDiv.innerHTML += '<div class="loading" id="load3-'+id+'">\u23F3 블로그 주제 불러오는 중...</div>';
+
+      var p3 = '오늘(' + dt + ') 네이버 블로그 수익화 전문가로서 답해줘.\n'
+        + '블로그: ' + blog.topics + '\n'
+        + '오늘 트렌드: ' + (d1.trends||[]).join(', ') + '\n\n'
+        + '이 블로그에 맞는 글 주제 5개를 JSON으로만 출력.\n'
+        + '{"topics":[{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+        + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+        + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+        + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]},'
+        + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","kws":["k1","k2","k3"]}]}';
+
+      api(p3, function(d3) {
+        store[id].topics = d3.topics || [];
+        var l3 = document.getElementById('load3-'+id);
+        if (l3) l3.remove();
+        renderTopics(id);
+        rbtn.disabled = false;
+        rbtn.textContent = '\u21BB 다시 추천 받기';
+      }, function(err) {
+        var l3 = document.getElementById('load3-'+id);
+        if (l3) l3.innerHTML = '<span class="err">주제 로딩 실패: ' + err + '</span>';
+        rbtn.disabled = false;
+        rbtn.textContent = '\u21BB 다시 추천 받기';
+      });
+
+    }, function(err) {
+      var l2 = document.getElementById('load2-'+id);
+      if (l2) l2.innerHTML = '<span class="err">추가 제품 로딩 실패: ' + err + '</span>';
+      rbtn.disabled = false;
+      rbtn.textContent = '\u21BB 다시 추천 받기';
+    });
+
+  }, function(err) {
+    rel.innerHTML = '<div class="err">\u26A0\uFE0F ' + err + '</div>';
+    rbtn.disabled = false;
+    rbtn.textContent = '\u2726 오늘 추천 받기';
+  });
+}
+
+function renderProducts(id) {
+  var s = store[id];
+  if (!s) return;
+  var el = document.getElementById('r'+id);
+  var html = '<div class="dsbar"><span class="dot ' + (s.hasNaver ? 'dot-g' : 'dot-y') + '"></span><span>분석 기준: ' + s.ds + '</span></div>';
+  if (s.trends && s.trends.length) {
+    html += '<div class="trendbar"><span class="trlabel">\uD83D\uDD25 오늘 트렌드</span>';
+    s.trends.forEach(function(t){ html += '<span class="trkw">'+t+'</span>'; });
+    html += '</div>';
+  }
+  html += '<div class="grid">';
+  (s.products||[]).forEach(function(p) {
+    var cu = 'https://www.coupang.com/np/search?q='+encodeURIComponent(p.name);
+    html += '<div class="card">'
+      + '<div class="cnum">'+String(p.n).padStart(2,'0')+' · '+p.cat+'</div>'
+      + '<div class="cname">'+p.name+'</div>'
+      + '<div class="creason">'+p.reason+'</div>'
+      + '<div class="ckws">'+(p.kws||[]).map(function(k){ return '<span class="ckw">'+k+'</span>'; }).join('')+'</div>'
+      + (s.isCoupang ? '<div class="clink"><a href="'+cu+'" target="_blank">\uD83D\uDD17 쿠팡 검색</a></div>' : '')
+      + '</div>';
+  });
+  html += '</div>';
+  html += '<div id="topicarea-'+id+'"></div>';
+  html += '<div class="copybar"><button class="copybtn" onclick="copyAll(\''+id+'\')">\uD83D\uDCCB 전체 복사</button></div>';
+  el.innerHTML = html;
+}
+
+function renderTopics(id) {
+  var s = store[id];
+  if (!s || !s.topics) return;
+  var el = document.getElementById('topicarea-'+id);
+  if (!el) return;
+  var html = '<div class="sectitle">\u270D\uFE0F 오늘 함께 쓰면 좋은 블로그 주제</div>';
+  s.topics.forEach(function(t, i) {
+    var subs = (t.subs||[]).map(function(s,si){ return '<div class="tsub"><span class="tsubn">'+(si+1)+'.</span> '+s+'</div>'; }).join('');
+    html += '<div class="tcard">'
+      + '<div class="tnum">'+String(i+1).padStart(2,'0')+'</div>'
+      + '<div class="tbody">'
+      + '<div class="ttitle">'+t.title+'</div>'
+      + (t.intro ? '<div class="tintro">"'+t.intro+'"</div>' : '')
+      + '<div class="tsubs">'+subs+'</div>'
+      + '<div class="tkws">'+(t.kws||[]).map(function(k){ return '<span class="tkw">'+k+'</span>'; }).join('')+'</div>'
+      + '<button class="csmbtn" onclick="copyTopic(\''+id+'\','+i+',this)">\uD83D\uDCCB 복사</button>'
+      + '</div></div>';
+  });
+  el.innerHTML = html;
+}
+
+function copyTopic(id, idx, btn) {
+  var t = ((store[id]||{}).topics||[])[idx];
+  if (!t) return;
+  var txt = '제목: '+t.title+'\n';
+  if (t.intro) txt += '도입부: "'+t.intro+'"\n';
+  txt += '소제목 구성:\n';
+  (t.subs||[]).forEach(function(s,i){ txt += '  '+(i+1)+'. '+s+'\n'; });
+  txt += '핵심 키워드: '+(t.kws||[]).join(' / ');
+  navigator.clipboard.writeText(txt).then(function(){
+    var o = btn.textContent; btn.textContent = '\u2705 복사됨';
+    setTimeout(function(){ btn.textContent = o; }, 1800);
+  });
+}
+
+function copyAll(id) {
+  var s = store[id];
+  if (!s) return;
+  var txt = '\uD83D\uDCC5 '+s.dt+' 추천\n\uD83D\uDD25 트렌드: '+(s.trends||[]).join(', ')+'\n\n';
+  (s.products||[]).forEach(function(p){
+    txt += '['+p.n+'] '+p.name+'\n카테고리: '+p.cat+'\n이유: '+p.reason+'\nSEO: '+(p.kws||[]).join(' / ')+'\n';
+    if (s.isCoupang) txt += '쿠팡: https://www.coupang.com/np/search?q='+encodeURIComponent(p.name)+'\n';
+    txt += '\n';
+  });
+  if (s.topics && s.topics.length) {
+    txt += '\u270D\uFE0F 추천 블로그 주제\n';
+    s.topics.forEach(function(t,i){
+      txt += '\n['+(i+1)+'] 제목: '+t.title+'\n';
+      if (t.intro) txt += '도입부: "'+t.intro+'"\n';
+      (t.subs||[]).forEach(function(s,si){ txt += '  '+(si+1)+'. '+s+'\n'; });
+      txt += '키워드: '+(t.kws||[]).join(' / ')+'\n';
+    });
+  }
+  navigator.clipboard.writeText(txt).then(function(){ alert('복사됐습니다!'); });
+}
+
+function runIssue(id) {
+  var k = gk();
+  if (!k.ak) { openModal(); return; }
+  var blog = B[id];
+  var ibtn = document.getElementById('ib'+id);
+  var iel = document.getElementById('i'+id);
+  ibtn.disabled = true;
+  ibtn.textContent = '\u23F3 분석 중...';
+  iel.innerHTML = '';
+  var dt = dtstr();
+
+  var p = '오늘(' + dt + ') 네이버 블로그 수익화 전문가로서 답해줘.\n'
+    + '블로그: ' + blog.topics + '\n\n'
+    + '웹검색으로 오늘 실시간 이슈/뉴스를 파악하고, 이 블로그와 연결되는 이슈 기반 주제 5개를 JSON으로만 출력.\n'
+    + '{"topics":[{"issue":"이슈한줄","title":"블로그제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","kws":["k1","k2","k3"]},'
+    + '{"issue":"이슈한줄","title":"블로그제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","kws":["k1","k2","k3"]},'
+    + '{"issue":"이슈한줄","title":"블로그제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","kws":["k1","k2","k3"]},'
+    + '{"issue":"이슈한줄","title":"블로그제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","kws":["k1","k2","k3"]},'
+    + '{"issue":"이슈한줄","title":"블로그제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","kws":["k1","k2","k3"]}]}';
+
+  api(p, function(d) {
+    store['issue_'+id] = d.topics || [];
+    var html = '<div class="sectitle">\uD83D\uDCF0 오늘의 이슈 기반 블로그 주제</div>';
+    (d.topics||[]).forEach(function(t,i){
+      var subs = (t.subs||[]).map(function(s,si){ return '<div class="tsub"><span class="tsubn">'+(si+1)+'.</span> '+s+'</div>'; }).join('');
+      html += '<div class="tcard">'
+        + '<div class="tnum">'+String(i+1).padStart(2,'0')+'</div>'
+        + '<div class="tbody">'
+        + '<div class="ibadge">\uD83D\uDD25 '+t.issue+'</div>'
+        + '<div class="ttitle">'+t.title+'</div>'
+        + (t.intro ? '<div class="tintro">"'+t.intro+'"</div>' : '')
+        + '<div class="tsubs">'+subs+'</div>'
+        + '<div class="tkws">'+(t.kws||[]).map(function(k){ return '<span class="ikw">'+k+'</span>'; }).join('')+'</div>'
+        + '<button class="csmbtn" onclick="copyIssueTopic(\''+id+'\','+i+',this)">\uD83D\uDCCB 복사</button>'
+        + '</div></div>';
+    });
+    iel.innerHTML = html;
+    ibtn.disabled = false;
+    ibtn.textContent = '\uD83D\uDCF0 오늘의 이슈 주제';
+  }, function(err) {
+    iel.innerHTML = '<div class="err">\u26A0\uFE0F ' + err + '</div>';
+    ibtn.disabled = false;
+    ibtn.textContent = '\uD83D\uDCF0 오늘의 이슈 주제';
+  });
+}
+
+function copyIssueTopic(id, idx, btn) {
+  var t = (store['issue_'+id]||[])[idx];
+  if (!t) return;
+  var txt = '제목: '+t.title+'\n';
+  if (t.intro) txt += '도입부: "'+t.intro+'"\n';
+  txt += '소제목 구성:\n';
+  (t.subs||[]).forEach(function(s,i){ txt += '  '+(i+1)+'. '+s+'\n'; });
+  txt += '핵심 키워드: '+(t.kws||[]).join(' / ')+'\n관련 이슈: '+t.issue;
+  navigator.clipboard.writeText(txt).then(function(){
+    var o = btn.textContent; btn.textContent = '\u2705 복사됨';
+    setTimeout(function(){ btn.textContent = o; }, 1800);
+  });
+}
+
+function toggleWritten(id) {
+  var box = document.getElementById('wbox-'+id);
+  box.classList.toggle('open');
+  if (box.classList.contains('open')) {
+    document.getElementById('wtxt-'+id).focus();
+  }
+}
+
+function runWritten(id) {
+  var k = gk();
+  if (!k.ak) { openModal(); return; }
+  var input = document.getElementById('wtxt-'+id).value.trim();
+  if (!input) { alert('오늘 쓴 글 주제를 입력해주세요.'); return; }
+  var blog = B[id];
+  var btn = document.getElementById('wrun-'+id);
+  var rel = document.getElementById('w'+id);
+  btn.disabled = true;
+  btn.textContent = '... 분석 중...';
+  rel.innerHTML = '';
+
+  var written = input.split(/[,\n]/).map(function(s){ return s.trim(); }).filter(Boolean);
+  var dt = dtstr();
+  var list = written.map(function(w,i){ return (i+1)+'. '+w; }).join('\n');
+
+  var p = '오늘(' + dt + ') 네이버 블로그 수익화 전문가로서 답해줘.\n'
+    + '블로그: ' + blog.topics + '\n\n'
+    + '오늘 이미 쓴 글:\n' + list + '\n\n'
+    + '위 글과 연결되는 추가 블로그 주제 5개를 JSON으로만 출력.\n'
+    + '{"topics":[{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","connection":"연결이유","kws":["k1","k2","k3"]},'
+    + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","connection":"연결이유","kws":["k1","k2","k3"]},'
+    + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","connection":"연결이유","kws":["k1","k2","k3"]},'
+    + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","connection":"연결이유","kws":["k1","k2","k3"]},'
+    + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","connection":"연결이유","kws":["k1","k2","k3"]}]}';
+
+  api(p, function(d) {
+    store['written_'+id] = d.topics || [];
+    var html = '<div class="sectitle">연관 주제 추천 (' + written.length + '개 글 기반)</div>';
+    (d.topics||[]).forEach(function(t,i){
+      var subs = (t.subs||[]).map(function(s,si){ return '<div class="tsub"><span class="tsubn">'+(si+1)+'.</span> '+s+'</div>'; }).join('');
+      html += '<div class="tcard">'
+        + '<div class="tnum">'+String(i+1).padStart(2,'0')+'</div>'
+        + '<div class="tbody">'
+        + '<div class="ttitle">'+t.title+'</div>'
+        + (t.intro ? '<div class="tintro">"'+t.intro+'"</div>' : '')
+        + '<div class="tsubs">'+subs+'</div>'
+        + (t.connection ? '<div style="font-size:12px;color:#aaa;margin-bottom:6px">연결: '+t.connection+'</div>' : '')
+        + '<div class="tkws">'+(t.kws||[]).map(function(k){ return '<span class="tkw">'+k+'</span>'; }).join('')+'</div>'
+        + '<button class="csmbtn" onclick="copyWritten(''+id+'','+i+',this)">복사</button>'
+        + '</div></div>';
+    });
+    rel.innerHTML = html;
+    btn.disabled = false;
+    btn.textContent = '다시 추천 받기';
+  }, function(err) {
+    rel.innerHTML = '<div class="err">오류: ' + err + '</div>';
+    btn.disabled = false;
+    btn.textContent = '연관 주제 추천 받기';
+  });
+}
+
+function copyWritten(id, idx, btn) {
+  var t = (store['written_'+id]||[])[idx];
+  if (!t) return;
+  var txt = '제목: '+t.title+'\n';
+  if (t.intro) txt += '도입부: "'+t.intro+'"\n';
+  txt += '소제목 구성:\n';
+  (t.subs||[]).forEach(function(s,i){ txt += '  '+(i+1)+'. '+s+'\n'; });
+  txt += '핵심 키워드: '+(t.kws||[]).join(' / ');
+  if (t.connection) txt += '\n연결 이유: '+t.connection;
+  navigator.clipboard.writeText(txt).then(function(){
+    var o = btn.textContent; btn.textContent = '\u2705 복사됨';
+    setTimeout(function(){ btn.textContent = o; }, 1800);
+  });
+}
+
+// 초기화
+updateHbtn();
+['a','b','c'].forEach(showInit);
+</script>
+</body>
+</html>
