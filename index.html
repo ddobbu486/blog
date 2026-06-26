@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>블로그 제품 추천기</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, 'Malgun Gothic', sans-serif; background: #f5f4f0; color: #1a1a18; min-height: 100vh; }
+
+header { background: #fff; border-bottom: 1px solid #e8e6e0; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+header h1 { font-size: 16px; font-weight: 600; }
+header .sub { font-size: 12px; color: #888; margin-top: 2px; }
+.settings-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #555; font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.settings-btn:hover { border-color: #bbb; color: #222; }
+.settings-btn.has-key { border-color: #1a8a5a; color: #1a8a5a; }
+
+/* 모달 */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 100; align-items: center; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: #fff; border-radius: 14px; padding: 28px; width: 90%; max-width: 520px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+.modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.modal .modal-desc { font-size: 13px; color: #666; margin-bottom: 20px; line-height: 1.6; }
+.modal-section { margin-bottom: 20px; }
+.modal-section label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; letter-spacing: 0.3px; }
+.modal-section input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; font-family: inherit; color: #1a1a18; background: #fafaf8; }
+.modal-section input:focus { outline: none; border-color: #888; background: #fff; }
+.modal-section .hint { font-size: 12px; color: #aaa; margin-top: 5px; }
+.modal-section .hint a { color: #555; }
+.modal-divider { border: none; border-top: 1px solid #f0ede8; margin: 6px 0 20px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-save { padding: 10px 22px; border-radius: 8px; border: none; background: #1a1a18; color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.btn-save:hover { opacity: 0.85; }
+.btn-cancel { padding: 10px 18px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #555; font-size: 14px; cursor: pointer; font-family: inherit; }
+.btn-cancel:hover { background: #f5f4f0; }
+.key-status { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; }
+.key-status.ok { background: #d4f0e4; color: #1a6644; }
+.key-status.missing { background: #fef0ee; color: #c0392b; }
+
+/* 데이터 소스 표시 */
+.data-source-bar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #fff; border-radius: 8px; border: 1px solid #e8e6e0; margin-bottom: 16px; font-size: 12px; color: #666; }
+.ds-dot { width: 8px; height: 8px; border-radius: 50%; }
+.ds-dot.naver { background: #03c75a; }
+.ds-dot.ai { background: #f0a500; }
+
+.container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+.tab { padding: 9px 18px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #666; font-size: 14px; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.tab:hover { border-color: #bbb; color: #333; }
+.tab.active { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+.tab .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 20px; margin-left: 6px; vertical-align: middle; }
+.tab.active .badge { opacity: 0.7; }
+.badge-a { background: #d4f0e4; color: #1a6644; }
+.badge-b { background: #d4e8fb; color: #1a4f8a; }
+.badge-c { background: #fce8c4; color: #8a4f1a; }
+.tab.active .badge-a,.tab.active .badge-b,.tab.active .badge-c { background: rgba(255,255,255,0.2); color: #fff; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.blog-info { background: #fff; border-radius: 10px; border: 1px solid #e8e6e0; padding: 14px 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+.blog-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.icon-a { background: #d4f0e4; }
+.icon-b { background: #d4e8fb; }
+.icon-c { background: #fce8c4; }
+.blog-info-text .title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+.blog-info-text .topics { font-size: 12px; color: #888; margin-top: 2px; }
+
+.btn-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.run-btn { display: flex; align-items: center; gap: 8px; padding: 11px 22px; border-radius: 8px; border: 1px solid #1a1a18; background: #1a1a18; color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; transition: opacity 0.15s; }
+.run-btn:hover { opacity: 0.85; }
+.run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.issue-btn { display: flex; align-items: center; gap: 8px; padding: 11px 22px; border-radius: 8px; border: 1px solid #555; background: #fff; color: #333; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.issue-btn:hover { background: #f5f4f0; }
+.issue-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.issue-section { margin-top: 24px; margin-bottom: 8px; }
+.issue-section-title { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.issue-card { background: #fff; border: 1px solid #e8e6e0; border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
+.issue-num { font-size: 12px; font-weight: 700; color: #bbb; min-width: 20px; margin-top: 2px; }
+.issue-body { flex: 1; }
+.issue-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #fce8c4; color: #8a4f1a; border: 1px solid #f5d4a0; margin-bottom: 6px; }
+.issue-title { font-size: 14px; font-weight: 600; color: #1a1a18; line-height: 1.4; margin-bottom: 3px; }
+.issue-intro { font-size: 13px; color: #888; font-style: italic; margin-bottom: 6px; line-height: 1.5; }
+.issue-subtitles { margin-bottom: 6px; }
+.issue-sub { font-size: 13px; color: #444; padding: 1px 0; display: flex; gap: 6px; }
+.issue-sub-num { color: #bbb; font-weight: 600; min-width: 14px; }
+.issue-kws { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.issue-kw { font-size: 11px; color: #8a4f1a; background: #fce8c4; border: 1px solid #f5d4a0; border-radius: 4px; padding: 2px 7px; }
+.issue-copy-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid #ddd; background: #fff; color: #666; font-size: 12px; cursor: pointer; font-family: inherit; }
+.issue-copy-btn:hover { background: #f5f4f0; }
+.spin { display: inline-block; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.trend-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; padding: 10px 14px; background: #fff; border-radius: 8px; border: 1px solid #e8e6e0; }
+.trend-label { font-size: 12px; color: #888; font-weight: 600; }
+.trend-kw { font-size: 12px; padding: 3px 10px; border-radius: 20px; border: 1px solid #e0ddd6; color: #444; background: #fafaf8; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.card { background: #fff; border: 1px solid #e8e6e0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.card-num { font-size: 11px; font-weight: 600; color: #aaa; letter-spacing: 0.5px; }
+.card-name { font-size: 14px; font-weight: 600; color: #1a1a18; line-height: 1.4; }
+.card-reason { font-size: 13px; color: #555; line-height: 1.6; flex: 1; }
+.card-kws { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.card-kw { font-size: 11px; color: #666; background: #f5f4f0; border: 1px solid #e0ddd6; border-radius: 4px; padding: 2px 7px; }
+.card-link { margin-top: 6px; padding-top: 8px; border-top: 1px solid #f0ede8; }
+.card-link a { font-size: 13px; color: #d44b00; text-decoration: none; display: flex; align-items: center; gap: 4px; font-weight: 500; }
+.card-link a:hover { text-decoration: underline; }
+
+.copy-section { margin-top: 20px; display: flex; gap: 8px; flex-wrap: wrap; }
+.copy-btn { display: flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #555; font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.copy-btn:hover { border-color: #bbb; color: #222; background: #fafaf8; }
+.copy-btn.ok { border-color: #1a8a5a; color: #1a8a5a; }
+
+.empty { display: flex; flex-direction: column; align-items: center; padding: 48px 16px; color: #bbb; gap: 10px; text-align: center; }
+.empty-icon { font-size: 40px; }
+.empty p { font-size: 14px; }
+.no-key-warn { display: flex; flex-direction: column; align-items: center; padding: 36px 16px; gap: 12px; text-align: center; }
+.no-key-warn p { font-size: 14px; color: #888; }
+.no-key-warn button { padding: 10px 20px; border-radius: 8px; border: 1px solid #1a1a18; background: #1a1a18; color: #fff; font-size: 14px; cursor: pointer; font-family: inherit; }
+.error { color: #c0392b; font-size: 13px; padding: 10px 14px; background: #fef0ee; border-radius: 8px; border: 1px solid #f5c6c0; margin-bottom: 12px; }
+.topic-section { margin-top: 28px; }
+.topic-section-title { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.topic-list { display: flex; flex-direction: column; gap: 8px; }
+.topic-card { background: #fff; border: 1px solid #e8e6e0; border-radius: 10px; padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; }
+.topic-num { font-size: 12px; font-weight: 700; color: #bbb; min-width: 20px; margin-top: 1px; }
+.topic-body { flex: 1; }
+.topic-title { font-size: 14px; font-weight: 600; color: #1a1a18; line-height: 1.4; margin-bottom: 4px; }
+.topic-desc { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 6px; }
+.topic-kws { display: flex; flex-wrap: wrap; gap: 4px; }
+.topic-kw { font-size: 11px; color: #666; background: #f0f7ff; border: 1px solid #d4e8fb; border-radius: 4px; padding: 2px 7px; }
+.topic-intro { font-size: 13px; color: #888; font-style: italic; margin: 4px 0 8px; line-height: 1.5; }
+.topic-subtitles { margin: 6px 0 8px; }
+.topic-sub { font-size: 13px; color: #444; padding: 2px 0; display: flex; gap: 6px; line-height: 1.5; }
+.topic-sub-num { color: #bbb; font-weight: 600; min-width: 14px; }
+.topic-copy-btn { margin-top: 8px; padding: 5px 12px; border-radius: 6px; border: 1px solid #ddd; background: #fff; color: #666; font-size: 12px; cursor: pointer; font-family: inherit; }
+.topic-copy-btn:hover { background: #f5f4f0; }
+
+@media (max-width: 600px) {
+  .tabs { overflow-x: auto; }
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* 오늘 쓴 글 기반 추천 */
+.written-section { background: #fff; border-radius: 12px; border: 1px solid #e8e6e0; padding: 20px; margin-bottom: 28px; }
+.written-section-title { font-size: 14px; font-weight: 600; color: #1a1a18; margin-bottom: 4px; }
+.written-section-desc { font-size: 12px; color: #999; margin-bottom: 14px; }
+.written-input-wrap { display: flex; gap: 8px; margin-bottom: 10px; }
+.written-input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; font-family: inherit; color: #1a1a18; background: #fafaf8; resize: none; min-height: 72px; line-height: 1.6; }
+.written-input:focus { outline: none; border-color: #888; background: #fff; }
+.written-hint { font-size: 12px; color: #bbb; margin-bottom: 12px; }
+.written-btn { display: flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 8px; border: 1px solid #1a1a18; background: #1a1a18; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: opacity 0.15s; white-space: nowrap; }
+.written-btn:hover { opacity: 0.85; }
+.written-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.written-tag { display: inline-flex; align-items: center; gap: 4px; background: #f5f4f0; border: 1px solid #e0ddd6; border-radius: 20px; padding: 4px 10px; font-size: 12px; color: #444; margin: 3px; cursor: pointer; }
+.written-tag:hover { background: #eae8e4; }
+.written-tags { margin-bottom: 10px; }
+.written-result { margin-top: 16px; }
+.wtopic-card { background: #fafaf8; border: 1px solid #e8e6e0; border-radius: 10px; padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.wtopic-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: #f0f7ff; color: #1a4f8a; border: 1px solid #d4e8fb; white-space: nowrap; margin-top: 1px; }
+.wtopic-body { flex: 1; }
+.wtopic-title { font-size: 14px; font-weight: 600; color: #1a1a18; margin-bottom: 3px; line-height: 1.4; }
+.wtopic-desc { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 6px; }
+.wtopic-kws { display: flex; flex-wrap: wrap; gap: 4px; }
+.wtopic-kw { font-size: 11px; color: #666; background: #f0f7ff; border: 1px solid #d4e8fb; border-radius: 4px; padding: 2px 7px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📋 블로그 제품 추천기</h1>
+    <div class="sub">네이버 데이터랩 + AI 분석</div>
+  </div>
+  <button class="settings-btn" id="settings-btn" onclick="openSettings()">⚙️ API 키 설정</button>
+</header>
+
+<!-- 설정 모달 -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h2>🔑 API 키 설정</h2>
+    <p class="modal-desc">입력한 키는 이 기기의 브라우저(localStorage)에만 저장되며 외부로 전송되지 않습니다.</p>
+
+    <div id="key-status-area"></div>
+
+    <div class="modal-section">
+      <label>Anthropic API 키 (필수)</label>
+      <input type="password" id="input-anthropic" placeholder="sk-ant-..." autocomplete="off">
+      <div class="hint">→ <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> 에서 발급</div>
+    </div>
+
+    <hr class="modal-divider">
+
+    <div class="modal-section">
+      <label>네이버 데이터랩 Client ID</label>
+      <input type="text" id="input-naver-id" placeholder="네이버 개발자센터 Client ID" autocomplete="off">
+      <div class="hint" style="margin-bottom:10px">→ <a href="https://developers.naver.com/apps/#/register" target="_blank">developers.naver.com</a> 에서 앱 등록 후 발급<br>· 사용 API: <b>데이터랩(검색어트렌드)</b> 체크 필수</div>
+      <label>네이버 데이터랩 Client Secret</label>
+      <input type="password" id="input-naver-secret" placeholder="Client Secret" autocomplete="off">
+      <div class="hint">※ 네이버 API는 브라우저 CORS 제한으로 직접 호출 불가 → 키워드 기반으로 AI가 데이터랩 트렌드를 반영해 분석합니다</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeSettings()">취소</button>
+      <button class="btn-save" onclick="saveKeys()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- 오늘 쓴 글 기반 추천 -->
+  <div class="written-section">
+    <div class="written-section-title">📝 오늘 쓴 글 기반 추가 주제 추천</div>
+    <div class="written-section-desc">오늘 작성한 글 제목이나 주제를 입력하면, 연관된 블로그 주제를 추천해드려요</div>
+    <div class="written-tags" id="written-tags"></div>
+    <div style="display:flex;gap:8px;align-items:flex-start">
+      <textarea class="written-input" id="written-input" placeholder="예) 여름 선크림 추천, 에어프라이어 요리법, 강아지 산책 용품&#10;쉼표나 줄바꿈으로 여러 개 입력 가능해요" rows="3"></textarea>
+    </div>
+    <div class="written-hint">※ 입력 후 추천 받기 클릭 · 쉼표(,) 또는 줄바꿈으로 구분</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="written-btn" id="written-btn" onclick="runWritten()">✦ 연관 주제 추천 받기</button>
+      <select id="written-blog-sel" style="padding:9px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit;background:#fff;color:#444;cursor:pointer">
+        <option value="a">블로그 A (생활/화장품/패션/반려견)</option>
+        <option value="b">블로그 B (가전/주방/육아)</option>
+        <option value="c">블로그 C (식품/건강/잡화)</option>
+      </select>
+    </div>
+    <div class="written-result" id="written-result"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('a')">블로그 A <span class="badge badge-a">네이버쇼핑</span></button>
+    <button class="tab" onclick="switchTab('b')">블로그 B <span class="badge badge-b">네이버쇼핑</span></button>
+    <button class="tab" onclick="switchTab('c')">블로그 C <span class="badge badge-c">쿠팡파트너스</span></button>
+  </div>
+
+  <!-- 블로그 A -->
+  <div id="panel-a" class="panel active">
+    <div class="blog-info">
+      <div class="blog-icon icon-a">🛍️</div>
+      <div class="blog-info-text">
+        <div class="title">블로그 A · 네이버쇼핑 커넥터</div>
+        <div class="topics">생활잡화, 화장품, 미용, 패션, 반려견</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="run-btn" id="btn-a" onclick="run('a')">✦ 오늘 추천 받기</button>
+      <button class="issue-btn" id="issuebtn-a" onclick="runIssue('a')">📰 오늘의 이슈 주제</button>
+    </div>
+    <div id="result-a"></div>
+    <div id="issue-a"></div>
+  </div>
+
+  <!-- 블로그 B -->
+  <div id="panel-b" class="panel">
+    <div class="blog-info">
+      <div class="blog-icon icon-b">🏠</div>
+      <div class="blog-info-text">
+        <div class="title">블로그 B · 네이버쇼핑 커넥터</div>
+        <div class="topics">생활가전, 주방용품, 육아</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="run-btn" id="btn-b" onclick="run('b')">✦ 오늘 추천 받기</button>
+      <button class="issue-btn" id="issuebtn-b" onclick="runIssue('b')">📰 오늘의 이슈 주제</button>
+    </div>
+    <div id="result-b"></div>
+    <div id="issue-b"></div>
+  </div>
+
+  <!-- 블로그 C -->
+  <div id="panel-c" class="panel">
+    <div class="blog-info">
+      <div class="blog-icon icon-c">🛒</div>
+      <div class="blog-info-text">
+        <div class="title">블로그 C · 쿠팡 파트너스</div>
+        <div class="topics">식품, 건강, 잡화전체</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="run-btn" id="btn-c" onclick="run('c')">✦ 오늘 추천 받기</button>
+      <button class="issue-btn" id="issuebtn-c" onclick="runIssue('c')">📰 오늘의 이슈 주제</button>
+    </div>
+    <div id="result-c"></div>
+    <div id="issue-c"></div>
+  </div>
+</div>
+
+<script>
+const BLOGS = {
+  a: { name: '블로그 A', type: 'naver', topics: '생활잡화, 화장품, 미용, 패션, 반려견',
+       datalabCats: '패션의류, 화장품/미용, 생활/건강, 반려동물용품' },
+  b: { name: '블로그 B', type: 'naver', topics: '생활가전, 주방용품, 육아',
+       datalabCats: '생활가전, 주방용품, 출산/육아' },
+  c: { name: '블로그 C', type: 'coupang', topics: '식품, 건강, 잡화전체',
+       datalabCats: '식품, 건강, 생활/건강' }
+};
+
+// 키 관리
+function getKeys() {
+  return {
+    anthropic: localStorage.getItem('key_anthropic') || '',
+    naverId: localStorage.getItem('key_naver_id') || '',
+    naverSecret: localStorage.getItem('key_naver_secret') || ''
+  };
+}
+
+function saveKeys() {
+  const a = document.getElementById('input-anthropic').value.trim();
+  const ni = document.getElementById('input-naver-id').value.trim();
+  const ns = document.getElementById('input-naver-secret').value.trim();
+  if (!a) { alert('Anthropic API 키는 필수입니다.'); return; }
+  localStorage.setItem('key_anthropic', a);
+  if (ni) localStorage.setItem('key_naver_id', ni);
+  if (ns) localStorage.setItem('key_naver_secret', ns);
+  closeSettings();
+  updateSettingsBtn();
+  // 각 패널 초기화
+  ['a','b','c'].forEach(id => showInitial(id));
+}
+
+function updateSettingsBtn() {
+  const btn = document.getElementById('settings-btn');
+  const keys = getKeys();
+  if (keys.anthropic) {
+    btn.classList.add('has-key');
+    btn.textContent = '✅ API 키 설정됨';
+  } else {
+    btn.classList.remove('has-key');
+    btn.textContent = '⚙️ API 키 설정';
+  }
+}
+
+function openSettings() {
+  const keys = getKeys();
+  document.getElementById('input-anthropic').value = keys.anthropic;
+  document.getElementById('input-naver-id').value = keys.naverId;
+  document.getElementById('input-naver-secret').value = keys.naverSecret;
+
+  const statusArea = document.getElementById('key-status-area');
+  if (keys.anthropic) {
+    statusArea.innerHTML = `
+      <div class="key-status ok">✅ Anthropic 키 저장됨 · ${keys.naverId ? '네이버 키도 저장됨' : '네이버 키 없음 (선택사항)'}</div>`;
+  } else {
+    statusArea.innerHTML = `<div class="key-status missing">⚠️ API 키가 설정되지 않았습니다</div>`;
+  }
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('modal-bg').classList.remove('open');
+}
+
+document.getElementById('modal-bg').addEventListener('click', function(e) {
+  if (e.target === this) closeSettings();
+});
+
+function showInitial(id) {
+  const keys = getKeys();
+  const result = document.getElementById('result-' + id);
+  if (!keys.anthropic) {
+    result.innerHTML = `<div class="no-key-warn">
+      <div style="font-size:36px">🔑</div>
+      <p>Anthropic API 키를 먼저 설정해주세요</p>
+      <button onclick="openSettings()">API 키 설정하기</button>
+    </div>`;
+  } else {
+    result.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><p>버튼을 누르면 오늘 트렌드 기반으로<br>제품 8개를 추천해드립니다</p></div>`;
+  }
+}
+
+function switchTab(id) {
+  ['a','b','c'].forEach((v,i) => {
+    document.querySelectorAll('.tab')[i].classList.toggle('active', v === id);
+    document.getElementById('panel-' + v).classList.toggle('active', v === id);
+  });
+}
+
+async function run(id) {
+  const keys = getKeys();
+  if (!keys.anthropic) { openSettings(); return; }
+
+  const blog = BLOGS[id];
+  const btn = document.getElementById('btn-' + id);
+  const result = document.getElementById('result-' + id);
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">↻</span> AI 분석 중...';
+  result.innerHTML = '';
+
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
+  const isCoupang = blog.type === 'coupang';
+  const hasNaver = !!(keys.naverId && keys.naverSecret);
+
+  const naverNote = hasNaver
+    ? `※ 네이버 데이터랩 연동 키 보유 (카테고리: ${blog.datalabCats}). 네이버 쇼핑 인사이트 기준으로 해당 카테고리의 실제 인기 키워드 트렌드를 반영하세요.`
+    : `※ 네이버 데이터랩 키 없음. 웹 검색으로 현재 트렌드를 파악하여 반영하세요.`;
+
+  const prompt = `오늘은 ${dateStr}입니다. 당신은 네이버 블로그 수익화 전문가입니다.
+
+블로그 카테고리: ${blog.topics}
+수익화: ${isCoupang ? '쿠팡 파트너스' : '네이버 쇼핑 커넥터'}
+데이터랩 카테고리: ${blog.datalabCats}
+${naverNote}
+
+웹 검색으로 오늘 트렌드를 파악한 뒤, 아래 JSON만 출력하세요. 설명이나 마크다운 없이 JSON만 출력하세요.
+
+{"dataSource":"${hasNaver ? '네이버 데이터랩+AI웹검색' : 'AI웹검색'}","trends":["키워드1","키워드2","키워드3"],"products":[{"num":1,"category":"카테고리명","name":"제품명","reason":"추천이유 한두문장","keywords":["키1","키2","키3"]},{"num":2,"category":"카테고리명","name":"제품명","reason":"추천이유 한두문장","keywords":["키1","키2","키3"]},{"num":3,"category":"카테고리명","name":"제품명","reason":"추천이유 한두문장","keywords":["키1","키2","키3"]},{"num":4,"category":"카테고리명","name":"제품명","reason":"추천이유 한두문장","keywords":["키1","키2","키3"]},{"num":5,"category":"카테고리명","name":"제품명","reason":"추천이유 한두문장","keywords":["키1","키2","키3"]},{"num":6,"category":"카테고리명","name":"제품명","reason":"추천이유 한두문장","keywords":["키1","키2","키3"]},{"num":7,"category":"카테고리명","name":"제품명","reason":"추천이유 한두문장","keywords":["키1","키2","키3"]},{"num":8,"category":"카테고리명","name":"제품명","reason":"추천이유 한두문장","keywords":["키1","키2","키3"]}],"blogTopics":[{"title":"제목","subtitles":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","keywords":["키1","키2","키3"]},{"title":"제목","subtitles":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","keywords":["키1","키2","키3"]},{"title":"제목","subtitles":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","keywords":["키1","키2","키3"]},{"title":"제목","subtitles":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","keywords":["키1","키2","키3"]},{"title":"제목","subtitles":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","keywords":["키1","키2","키3"]}]}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': keys.anthropic,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 3000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (res.status === 401) throw new Error('api_key');
+    const data = await res.json();
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start === -1 || end === -1) throw new Error('응답에서 JSON을 찾지 못했습니다');
+    let jsonStr = text.slice(start, end + 1);
+    jsonStr = jsonStr.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+    const parsed = JSON.parse(jsonStr);
+    renderResult(id, parsed, isCoupang, dateStr, hasNaver);
+  } catch(e) {
+    if (e.message === 'api_key') {
+      result.innerHTML = '<div class="error">⚠️ API 키가 올바르지 않습니다. 설정에서 다시 확인해주세요.</div>';
+    } else {
+      result.innerHTML = '<div class="error">⚠️ 추천을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.<br><small>' + e.message + '</small></div>';
+    }
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '↻ 다시 추천 받기';
+}
+
+function renderResult(id, data, isCoupang, dateStr, hasNaver) {
+  const result = document.getElementById('result-' + id);
+  let html = '';
+
+  // 데이터 소스 표시
+  html += `<div class="data-source-bar">
+    <span class="ds-dot ${hasNaver ? 'naver' : 'ai'}"></span>
+    <span>분석 기준: ${data.dataSource || (hasNaver ? '네이버 데이터랩 + AI 웹검색' : 'AI 웹검색')}</span>
+  </div>`;
+
+  if (data.trends && data.trends.length) {
+    html += '<div class="trend-bar"><span class="trend-label">🔥 오늘 트렌드</span>';
+    data.trends.forEach(t => { html += `<span class="trend-kw">${t}</span>`; });
+    html += '</div>';
+  }
+
+  html += '<div class="grid">';
+  (data.products || []).forEach(p => {
+    const coupangUrl = `https://www.coupang.com/np/search?q=${encodeURIComponent(p.name)}`;
+    html += `<div class="card">
+      <div class="card-num">${String(p.num).padStart(2,'0')} · ${p.category}</div>
+      <div class="card-name">${p.name}</div>
+      <div class="card-reason">${p.reason}</div>
+      <div class="card-kws">${(p.keywords||[]).map(k=>`<span class="card-kw">${k}</span>`).join('')}</div>
+      ${isCoupang ? `<div class="card-link"><a href="${coupangUrl}" target="_blank">🔗 쿠팡 검색</a></div>` : ''}
+    </div>`;
+  });
+  html += '</div>';
+
+  // 블로그 주제 섹션
+  if (data.blogTopics && data.blogTopics.length) {
+    html += '<div class="topic-section"><div class="topic-section-title">✍️ 오늘 함께 쓰면 좋은 블로그 주제</div><div class="topic-list">';
+    data.blogTopics.forEach((t, i) => {
+      const subtitleHtml = (t.subtitles||[]).map((s,si) => `<div class="topic-sub"><span class="topic-sub-num">${si+1}.</span> ${s}</div>`).join('');
+      html += `<div class="topic-card">
+        <div class="topic-num">${String(i+1).padStart(2,'0')}</div>
+        <div class="topic-body">
+          <div class="topic-title">${t.title}</div>
+          ${t.intro ? `<div class="topic-intro">"${t.intro}"</div>` : ''}
+          <div class="topic-subtitles">${subtitleHtml}</div>
+          <div class="topic-kws">${(t.keywords||[]).map(k=>`<span class="topic-kw">${k}</span>`).join('')}</div>
+          <button class="topic-copy-btn" onclick="copyTopic(${i}, this)" data-idx="${i}">📋 복사</button>
+        </div>
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+  // 전체 복사용 데이터 저장
+  window._lastBlogTopics = data.blogTopics || [];
+
+  const copyText = buildCopyText(data, isCoupang, dateStr);
+  html += `<div class="copy-section">
+    <button class="copy-btn" id="copybtn-${id}" onclick="doCopy('${id}', \`${escapeTpl(copyText)}\`)">📋 네이버 블로그 복사용 텍스트</button>
+  </div>`;
+
+  result.innerHTML = html;
+}
+
+function escapeTpl(str) {
+  return str.replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$/g,'\\$');
+}
+
+function buildCopyText(data, isCoupang, dateStr) {
+  let txt = `📅 ${dateStr} 오늘의 추천 제품\n`;
+  txt += `🔥 트렌드 키워드: ${(data.trends||[]).join(', ')}\n\n`;
+  (data.products||[]).forEach(p => {
+    txt += `[${p.num}] ${p.name}\n`;
+    txt += `카테고리: ${p.category}\n`;
+    txt += `추천 이유: ${p.reason}\n`;
+    txt += `SEO 키워드: ${(p.keywords||[]).join(' / ')}\n`;
+    if (isCoupang) txt += `쿠팡 검색: https://www.coupang.com/np/search?q=${encodeURIComponent(p.name)}\n`;
+    txt += '\n';
+  });
+  if (data.blogTopics && data.blogTopics.length) {
+    txt += `\n✍️ 오늘 추천 블로그 주제\n`;
+    data.blogTopics.forEach((t, i) => {
+      txt += `\n[${i+1}] 제목: ${t.title}\n`;
+      if (t.intro) txt += `도입부: "${t.intro}"\n`;
+      if (t.subtitles && t.subtitles.length) {
+        txt += `소제목 구성:\n`;
+        t.subtitles.forEach((s, si) => { txt += `  ${si+1}. ${s}\n`; });
+      }
+      txt += `핵심 키워드: ${(t.keywords||[]).join(' / ')}\n`;
+    });
+  }
+  return txt;
+}
+
+function copyTopic(idx, btn) {
+  const t = (window._lastBlogTopics || [])[idx];
+  if (!t) return;
+  let txt = `제목: ${t.title}
+`;
+  if (t.intro) txt += `도입부: "${t.intro}"
+`;
+  if (t.subtitles && t.subtitles.length) {
+    txt += `소제목 구성:
+`;
+    t.subtitles.forEach((s, i) => { txt += `  ${i+1}. ${s}
+`; });
+  }
+  txt += `핵심 키워드: ${(t.keywords||[]).join(' / ')}`;
+  navigator.clipboard.writeText(txt).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ 복사됨';
+    setTimeout(() => { btn.innerHTML = orig; }, 1800);
+  });
+}
+
+function doCopy(id, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copybtn-' + id);
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ 복사 완료!';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('ok'); }, 2000);
+  });
+}
+
+// 오늘 쓴 글 기반 추천
+function runWritten() {
+  const keys = getKeys();
+  if (!keys.anthropic) { openSettings(); return; }
+
+  const input = document.getElementById('written-input').value.trim();
+  if (!input) { alert('오늘 쓴 글 주제를 입력해주세요.'); return; }
+
+  const blogId = document.getElementById('written-blog-sel').value;
+  const blog = BLOGS[blogId];
+  const btn = document.getElementById('written-btn');
+  const result = document.getElementById('written-result');
+
+  // 입력 파싱 (쉼표 또는 줄바꿈으로 구분)
+  const written = input.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+
+  // 태그로 표시
+  const tagsEl = document.getElementById('written-tags');
+  tagsEl.innerHTML = written.map(w => `<span class="written-tag">📄 ${w}</span>`).join('');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">↻</span> 분석 중...';
+  result.innerHTML = '';
+
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
+
+  const prompt = `오늘은 ${dateStr}입니다. 당신은 네이버 블로그 수익화 전문가입니다.
+
+블로그 카테고리: ${blog.topics}
+수익화: ${blog.type === 'coupang' ? '쿠팡 파트너스' : '네이버 쇼핑 커넥터'}
+
+오늘 이미 작성한 글 목록:
+${written.map((w,i) => `${i+1}. ${w}`).join('\n')}
+
+위 글들과 자연스럽게 연결되면서 블로그 카테고리에도 맞는 추가 블로그 주제 6개를 추천해주세요.
+- 이미 쓴 글과 겹치지 않아야 함
+- 이미 쓴 글을 읽은 독자가 관심 가질 만한 주제
+- 오늘 트렌드/시즌도 반영
+
+JSON만 출력하세요. 다른 텍스트 없이:
+{"topics":[{"title":"제목","desc":"한줄설명","connection":"기존글과의연결이유","keywords":["키워드1","키워드2","키워드3"]},{"title":"제목","desc":"한줄설명","connection":"기존글과의연결이유","keywords":["키워드1","키워드2","키워드3"]},{"title":"제목","desc":"한줄설명","connection":"기존글과의연결이유","keywords":["키워드1","키워드2","키워드3"]},{"title":"제목","desc":"한줄설명","connection":"기존글과의연결이유","keywords":["키워드1","키워드2","키워드3"]},{"title":"제목","desc":"한줄설명","connection":"기존글과의연결이유","keywords":["키워드1","키워드2","키워드3"]},{"title":"제목","desc":"한줄설명","connection":"기존글과의연결이유","keywords":["키워드1","키워드2","키워드3"]}]}`;
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': keys.anthropic,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1200,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      messages: [{ role: 'user', content: prompt }]
+    })
+  }).then(r => r.json()).then(data => {
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start === -1) throw new Error('no json');
+    let jsonStr = text.slice(start, end + 1);
+    jsonStr = jsonStr.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+    const parsed = JSON.parse(jsonStr);
+
+    let html = `<div style="font-size:13px;font-weight:600;color:#555;margin-bottom:10px">💡 <b>${written.length}개</b> 글 기반 연관 주제 ${parsed.topics.length}개</div>`;
+    parsed.topics.forEach((t, i) => {
+      html += `<div class="wtopic-card">
+        <span class="wtopic-badge">${String(i+1).padStart(2,'0')}</span>
+        <div class="wtopic-body">
+          <div class="wtopic-title">${t.title}</div>
+          <div class="wtopic-desc">${t.desc}</div>
+          <div style="font-size:12px;color:#aaa;margin-bottom:6px">🔗 ${t.connection}</div>
+          <div class="wtopic-kws">${(t.keywords||[]).map(k=>`<span class="wtopic-kw">${k}</span>`).join('')}</div>
+        </div>
+      </div>`;
+    });
+
+    // 복사용 텍스트
+    let copyTxt = `📝 오늘 쓴 글 기반 추천 주제 (${dateStr})\n`;
+    copyTxt += `기존 글: ${written.join(', ')}\n\n`;
+    parsed.topics.forEach((t,i) => {
+      copyTxt += `[${i+1}] ${t.title}\n설명: ${t.desc}\n연결: ${t.connection}\n키워드: ${(t.keywords||[]).join(' / ')}\n\n`;
+    });
+
+    html += `<div style="margin-top:12px"><button class="copy-btn" onclick="navigator.clipboard.writeText(\`${escapeTpl(copyTxt)}\`).then(()=>{this.textContent='✅ 복사 완료!';setTimeout(()=>this.textContent='📋 주제 목록 복사',2000)})">📋 주제 목록 복사</button></div>`;
+    result.innerHTML = html;
+
+  }).catch(e => {
+    result.innerHTML = `<div class="error">⚠️ 추천을 불러오지 못했습니다. ${e.message}</div>`;
+  }).finally(() => {
+    btn.disabled = false;
+    btn.innerHTML = '↻ 다시 추천 받기';
+  });
+}
+
+async function runIssue(id) {
+  const keys = getKeys();
+  if (!keys.anthropic) { openSettings(); return; }
+
+  const blog = BLOGS[id];
+  const btn = document.getElementById('issuebtn-' + id);
+  const issueDiv = document.getElementById('issue-' + id);
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">↻</span> 이슈 분석 중...';
+  issueDiv.innerHTML = '';
+
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
+
+  const prompt = `오늘은 ${dateStr}입니다. 당신은 네이버 블로그 수익화 전문가입니다.
+
+블로그 카테고리: ${blog.topics}
+
+웹 검색으로 오늘의 실시간 이슈/뉴스/트렌드를 파악한 뒤, 이 블로그 카테고리와 연결할 수 있는 이슈 기반 블로그 주제 5개를 추천해주세요.
+- 오늘 실제 이슈(뉴스, 날씨, 사회 트렌드 등)와 블로그 카테고리를 자연스럽게 연결
+- 각 주제마다 어떤 이슈에서 나온 건지 명시
+
+JSON만 출력하세요:
+{"issuedDate":"${dateStr}","topics":[{"issue":"오늘이슈한줄","title":"블로그제목","subtitles":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","keywords":["키1","키2","키3"]},{"issue":"오늘이슈한줄","title":"블로그제목","subtitles":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","keywords":["키1","키2","키3"]},{"issue":"오늘이슈한줄","title":"블로그제목","subtitles":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","keywords":["키1","키2","키3"]},{"issue":"오늘이슈한줄","title":"블로그제목","subtitles":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","keywords":["키1","키2","키3"]},{"issue":"오늘이슈한줄","title":"블로그제목","subtitles":["소제목1","소제목2","소제목3"],"intro":"도입부한줄","keywords":["키1","키2","키3"]}]}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': keys.anthropic,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    if (res.status === 401) throw new Error('api_key');
+    const data = await res.json();
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const start = text.indexOf('{'); const end = text.lastIndexOf('}');
+    if (start === -1) throw new Error('JSON 없음');
+    let jsonStr = text.slice(start, end + 1);
+    jsonStr = jsonStr.replace(/[ --]/g, '');
+    const parsed = JSON.parse(jsonStr);
+    renderIssue(id, parsed, dateStr);
+  } catch(e) {
+    issueDiv.innerHTML = `<div class="error">⚠️ 이슈 주제를 불러오지 못했습니다. ${e.message}</div>`;
+  }
+  btn.disabled = false;
+  btn.innerHTML = '📰 오늘의 이슈 주제';
+}
+
+function renderIssue(id, data, dateStr) {
+  const issueDiv = document.getElementById('issue-' + id);
+  window['_issueTopics_' + id] = data.topics || [];
+  let html = '<div class="issue-section"><div class="issue-section-title">📰 오늘의 이슈 기반 블로그 주제</div>';
+  (data.topics || []).forEach((t, i) => {
+    const subs = (t.subtitles||[]).map((s,si) => `<div class="issue-sub"><span class="issue-sub-num">${si+1}.</span> ${s}</div>`).join('');
+    html += `<div class="issue-card">
+      <div class="issue-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="issue-body">
+        <div class="issue-badge">🔥 ${t.issue}</div>
+        <div class="issue-title">${t.title}</div>
+        ${t.intro ? `<div class="issue-intro">"${t.intro}"</div>` : ''}
+        <div class="issue-subtitles">${subs}</div>
+        <div class="issue-kws">${(t.keywords||[]).map(k=>`<span class="issue-kw">${k}</span>`).join('')}</div>
+        <button class="issue-copy-btn" onclick="copyIssueTopic('${id}',${i},this)">📋 복사</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  issueDiv.innerHTML = html;
+}
+
+function copyIssueTopic(id, idx, btn) {
+  const t = (window['_issueTopics_' + id] || [])[idx];
+  if (!t) return;
+  let txt = `제목: ${t.title}
+`;
+  if (t.intro) txt += `도입부: "${t.intro}"
+`;
+  if (t.subtitles && t.subtitles.length) {
+    txt += `소제목 구성:
+`;
+    t.subtitles.forEach((s, i) => { txt += `  ${i+1}. ${s}
+`; });
+  }
+  txt += `핵심 키워드: ${(t.keywords||[]).join(' / ')}
+`;
+  txt += `관련 이슈: ${t.issue}`;
+  navigator.clipboard.writeText(txt).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ 복사됨';
+    setTimeout(() => { btn.innerHTML = orig; }, 1800);
+  });
+}
+
+// 초기화
+updateSettingsBtn();
+['a','b','c'].forEach(id => showInitial(id));
+</script>
+</body>
+</html>
