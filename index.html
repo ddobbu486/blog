@@ -105,6 +105,16 @@ header .sub { font-size: 12px; color: #888; margin-top: 2px; }
 .err { color: #c0392b; font-size: 13px; padding: 10px 14px; background: #fef0ee; border-radius: 8px; border: 1px solid #f5c6c0; margin-bottom: 12px; }
 .loading { font-size: 13px; color: #aaa; padding: 16px 0; }
 @media (max-width: 600px) { .tabs { overflow-x: auto; } .grid { grid-template-columns: 1fr; } }
+.wbox { background: #f9f8f6; border: 1px solid #e8e6e0; border-radius: 10px; padding: 16px; margin-bottom: 16px; display: none; }
+.wbox.open { display: block; }
+.wbox textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; font-family: inherit; resize: none; line-height: 1.6; margin-bottom: 6px; }
+.wbox textarea:focus { outline: none; border-color: #888; }
+.wbox-hint { font-size: 12px; color: #bbb; margin-bottom: 10px; }
+.wbox-btn { padding: 9px 18px; border-radius: 8px; border: none; background: #1a1a18; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.wbox-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.wresult { margin-top: 14px; }
+.wbtn { padding: 11px 22px; border-radius: 8px; border: 1px solid #888; background: #fff; color: #444; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.wbtn:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -139,21 +149,7 @@ header .sub { font-size: 12px; color: #888; margin-top: 2px; }
 </div>
 
 <div class="wrap">
-  <div class="written-box">
-    <h3>📝 오늘 쓴 글 기반 추가 주제 추천</h3>
-    <p>오늘 작성한 글 제목이나 주제를 입력하면 연관 블로그 주제를 추천해드려요</p>
-    <textarea id="wtxt" rows="3" placeholder="예) 여름 선크림 추천, 에어프라이어 요리법, 강아지 산책 용품"></textarea>
-    <div class="wrhint">쉼표(,) 또는 줄바꿈으로 구분</div>
-    <div class="wrrow">
-      <button class="wrbtn" id="wbtn" onclick="runWritten()">✦ 연관 주제 추천 받기</button>
-      <select class="wrsel" id="wsel">
-        <option value="a">블로그 A (생활/화장품/패션/반려견)</option>
-        <option value="b">블로그 B (가전/주방/육아)</option>
-        <option value="c">블로그 C (식품/건강/잡화)</option>
-      </select>
-    </div>
-    <div class="wrresult" id="wrresult"></div>
-  </div>
+  
 
   <div class="tabs">
     <button class="tab on" onclick="switchTab('a')">블로그 A <span class="bdg ba">네이버쇼핑</span></button>
@@ -162,30 +158,48 @@ header .sub { font-size: 12px; color: #888; margin-top: 2px; }
   </div>
 
   <div id="pa" class="panel on">
-    <div class="binfo"><div class="bico ica">🛍️</div><div><div class="btitle">블로그 A · 네이버쇼핑 커넥터</div><div class="btopics">생활잡화, 화장품, 미용, 패션, 반려견</div></div></div>
+    <div class="binfo"><div class="bico ica"></div><div><div class="btitle">블로그 A · 네이버쇼핑 커넥터</div><div class="btopics">생활잡화, 화장품, 미용, 패션, 반려견</div></div></div>
     <div class="btnrow">
-      <button class="rbtn" id="rba" onclick="runMain('a')">✦ 오늘 추천 받기</button>
-      <button class="ibtn" id="iba" onclick="runIssue('a')">📰 오늘의 이슈 주제</button>
+      <button class="rbtn" id="rba" onclick="runMain('a')">* 오늘 추천 받기</button>
+      <button class="ibtn" id="iba" onclick="runIssue('a')">이슈 주제</button>
+      <button class="wbtn" id="wbtn-a" onclick="toggleWritten('a')">오늘 쓴 글 기반</button>
     </div>
-    <div id="ra"></div><div id="ia"></div>
+    <div class="wbox" id="wbox-a">
+      <textarea id="wtxt-a" rows="3" placeholder="오늘 쓴 글 제목/주제 입력 (쉼표 또는 줄바꿈으로 구분)"></textarea>
+      <div class="wbox-hint">입력 후 버튼 클릭</div>
+      <button class="wbox-btn" id="wrun-a" onclick="runWritten('a')">연관 주제 추천 받기</button>
+    </div>
+    <div id="ra"></div><div id="ia"></div><div id="wa"></div>
   </div>
 
   <div id="pb" class="panel">
-    <div class="binfo"><div class="bico icb">🏠</div><div><div class="btitle">블로그 B · 네이버쇼핑 커넥터</div><div class="btopics">생활가전, 주방용품, 육아</div></div></div>
+    <div class="binfo"><div class="bico icb"></div><div><div class="btitle">블로그 B · 네이버쇼핑 커넥터</div><div class="btopics">생활가전, 주방용품, 육아</div></div></div>
     <div class="btnrow">
-      <button class="rbtn" id="rbb" onclick="runMain('b')">✦ 오늘 추천 받기</button>
-      <button class="ibtn" id="ibb" onclick="runIssue('b')">📰 오늘의 이슈 주제</button>
+      <button class="rbtn" id="rbb" onclick="runMain('b')">* 오늘 추천 받기</button>
+      <button class="ibtn" id="ibb" onclick="runIssue('b')">이슈 주제</button>
+      <button class="wbtn" id="wbtn-b" onclick="toggleWritten('b')">오늘 쓴 글 기반</button>
     </div>
-    <div id="rb"></div><div id="ib"></div>
+    <div class="wbox" id="wbox-b">
+      <textarea id="wtxt-b" rows="3" placeholder="오늘 쓴 글 제목/주제 입력 (쉼표 또는 줄바꿈으로 구분)"></textarea>
+      <div class="wbox-hint">입력 후 버튼 클릭</div>
+      <button class="wbox-btn" id="wrun-b" onclick="runWritten('b')">연관 주제 추천 받기</button>
+    </div>
+    <div id="rb"></div><div id="ib"></div><div id="wb"></div>
   </div>
 
   <div id="pc" class="panel">
-    <div class="binfo"><div class="bico icc">🛒</div><div><div class="btitle">블로그 C · 쿠팡 파트너스</div><div class="btopics">식품, 건강, 잡화전체</div></div></div>
+    <div class="binfo"><div class="bico icc"></div><div><div class="btitle">블로그 C · 쿠팡 파트너스</div><div class="btopics">식품, 건강, 잡화전체</div></div></div>
     <div class="btnrow">
-      <button class="rbtn" id="rbc" onclick="runMain('c')">✦ 오늘 추천 받기</button>
-      <button class="ibtn" id="ibc" onclick="runIssue('c')">📰 오늘의 이슈 주제</button>
+      <button class="rbtn" id="rbc" onclick="runMain('c')">* 오늘 추천 받기</button>
+      <button class="ibtn" id="ibc" onclick="runIssue('c')">이슈 주제</button>
+      <button class="wbtn" id="wbtn-c" onclick="toggleWritten('c')">오늘 쓴 글 기반</button>
     </div>
-    <div id="rc"></div><div id="ic"></div>
+    <div class="wbox" id="wbox-c">
+      <textarea id="wtxt-c" rows="3" placeholder="오늘 쓴 글 제목/주제 입력 (쉼표 또는 줄바꿈으로 구분)"></textarea>
+      <div class="wbox-hint">입력 후 버튼 클릭</div>
+      <button class="wbox-btn" id="wrun-c" onclick="runWritten('c')">연관 주제 추천 받기</button>
+    </div>
+    <div id="rc"></div><div id="ic"></div><div id="wc"></div>
   </div>
 </div>
 
@@ -526,17 +540,24 @@ function copyIssueTopic(id, idx, btn) {
   });
 }
 
-function runWritten() {
+function toggleWritten(id) {
+  var box = document.getElementById('wbox-'+id);
+  box.classList.toggle('open');
+  if (box.classList.contains('open')) {
+    document.getElementById('wtxt-'+id).focus();
+  }
+}
+
+function runWritten(id) {
   var k = gk();
   if (!k.ak) { openModal(); return; }
-  var input = document.getElementById('wtxt').value.trim();
+  var input = document.getElementById('wtxt-'+id).value.trim();
   if (!input) { alert('오늘 쓴 글 주제를 입력해주세요.'); return; }
-  var blogId = document.getElementById('wsel').value;
-  var blog = B[blogId];
-  var btn = document.getElementById('wbtn');
-  var rel = document.getElementById('wrresult');
+  var blog = B[id];
+  var btn = document.getElementById('wrun-'+id);
+  var rel = document.getElementById('w'+id);
   btn.disabled = true;
-  btn.textContent = '\u23F3 분석 중...';
+  btn.textContent = '... 분석 중...';
   rel.innerHTML = '';
 
   var written = input.split(/[,\n]/).map(function(s){ return s.trim(); }).filter(Boolean);
@@ -554,8 +575,8 @@ function runWritten() {
     + '{"title":"제목","subs":["소제목1","소제목2","소제목3"],"intro":"도입부","connection":"연결이유","kws":["k1","k2","k3"]}]}';
 
   api(p, function(d) {
-    store['written'] = d.topics || [];
-    var html = '<div class="sectitle">\uD83D\uDCA1 '+written.length+'개 글 기반 연관 주제</div>';
+    store['written_'+id] = d.topics || [];
+    var html = '<div class="sectitle">연관 주제 추천 (' + written.length + '개 글 기반)</div>';
     (d.topics||[]).forEach(function(t,i){
       var subs = (t.subs||[]).map(function(s,si){ return '<div class="tsub"><span class="tsubn">'+(si+1)+'.</span> '+s+'</div>'; }).join('');
       html += '<div class="tcard">'
@@ -564,23 +585,23 @@ function runWritten() {
         + '<div class="ttitle">'+t.title+'</div>'
         + (t.intro ? '<div class="tintro">"'+t.intro+'"</div>' : '')
         + '<div class="tsubs">'+subs+'</div>'
-        + (t.connection ? '<div style="font-size:12px;color:#aaa;margin-bottom:6px">\uD83D\uDD17 '+t.connection+'</div>' : '')
+        + (t.connection ? '<div style="font-size:12px;color:#aaa;margin-bottom:6px">연결: '+t.connection+'</div>' : '')
         + '<div class="tkws">'+(t.kws||[]).map(function(k){ return '<span class="tkw">'+k+'</span>'; }).join('')+'</div>'
-        + '<button class="csmbtn" onclick="copyWritten('+i+',this)">\uD83D\uDCCB 복사</button>'
+        + '<button class="csmbtn" onclick="copyWritten(''+id+'','+i+',this)">복사</button>'
         + '</div></div>';
     });
     rel.innerHTML = html;
     btn.disabled = false;
-    btn.textContent = '\u21BB 다시 추천 받기';
+    btn.textContent = '다시 추천 받기';
   }, function(err) {
-    rel.innerHTML = '<div class="err">\u26A0\uFE0F ' + err + '</div>';
+    rel.innerHTML = '<div class="err">오류: ' + err + '</div>';
     btn.disabled = false;
-    btn.textContent = '\u2726 연관 주제 추천 받기';
+    btn.textContent = '연관 주제 추천 받기';
   });
 }
 
-function copyWritten(idx, btn) {
-  var t = (store['written']||[])[idx];
+function copyWritten(id, idx, btn) {
+  var t = (store['written_'+id]||[])[idx];
   if (!t) return;
   var txt = '제목: '+t.title+'\n';
   if (t.intro) txt += '도입부: "'+t.intro+'"\n';
