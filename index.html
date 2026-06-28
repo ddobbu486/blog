@@ -287,15 +287,18 @@ function callApi(prompt,cb,errcb){
     })
   })
   .then(function(r){
-    if(r.status===401)throw new Error('API 키가 올바르지 않습니다');
-    return r.json();
+    return r.json().then(function(d){ return {status:r.status, data:d}; });
   })
-  .then(function(d){
+  .then(function(res){
+    if(res.status===401)throw new Error('API 키가 올바르지 않습니다');
+    if(res.status===529)throw new Error('API 서버 과부하 - 잠시 후 다시 시도해주세요');
+    var d=res.data;
+    if(!d||!d.content)throw new Error('API 응답 오류: '+(d&&d.error&&d.error.message||res.status));
     var txt=d.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
     var s=txt.indexOf('{'),e=txt.lastIndexOf('}');
-    if(s===-1)throw new Error('JSON 파싱 실패');
-    var parsed=JSON.parse(txt.slice(s,e+1));
-    cb(parsed);
+    if(s===-1)throw new Error('JSON 파싱 실패 - 다시 시도해주세요');
+    try{ var parsed=JSON.parse(txt.slice(s,e+1)); cb(parsed); }
+    catch(pe){ throw new Error('JSON 파싱 실패: '+pe.message); }
   })
   .catch(function(e){errcb(e.message);});
 }
